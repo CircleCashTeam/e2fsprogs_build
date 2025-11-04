@@ -1,10 +1,13 @@
 #include "extract.h"
 #include <fstream>
 #include <filesystem>
+#include <codecvt>
 #include <unordered_set>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fmt/format.h>
+
+#include "symlink.h"
 
 #ifdef _WIN32
 #include "windows_fast_file_writer.h"
@@ -33,6 +36,88 @@ static inline fs::path ensure_parent_dir(const std::string file_path)
     }
 
     return full_path;
+}
+
+#ifdef _WIN32
+static bool setSystemAttribute(const std::wstring &filePath)
+{
+    DWORD attrs = GetFileAttributesW(filePath.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES)
+    {
+        std::cerr << "Error: Could not get file attribute" << std::endl;
+        return false;
+    }
+
+    if (!SetFileAttributesW(filePath.c_str(), attrs | FILE_ATTRIBUTE_SYSTEM))
+    {
+        std::cerr << "Error: Set system attrib to symlink failed" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+std::vector<uint8_t> stringToUtf16Le(const std::string& utf8_str, bool include_bom = true) {
+    std::vector<uint8_t> result;
+    
+    if (include_bom) {
+        result.push_back(0xFF);
+        result.push_back(0xFE);
+    }
+    
+    if (utf8_str.empty()) {
+        return result;
+    }
+    
+    int wide_len = MultiByteToWideChar(CP_UTF8, 0, utf8_str.c_str(), -1, nullptr, 0);
+    if (wide_len == 0) {
+        return result;
+    }
+    
+    std::vector<wchar_t> wide_buffer(wide_len);
+    MultiByteToWideChar(CP_UTF8, 0, utf8_str.c_str(), -1, wide_buffer.data(), wide_len);
+    
+    for (size_t i = 0; i < (size_t)wide_len - 1; ++i) {
+        wchar_t c = wide_buffer[i];
+        result.push_back(static_cast<uint8_t>(c & 0xFF));
+        result.push_back(static_cast<uint8_t>((c >> 8) & 0xFF));
+    }
+
+    result.push_back(0x00);
+    result.push_back(0x00);
+    
+    return result;
+}
+#endif
+
+int xsymlink(const std::string link_target, const std::string path)
+{
+    auto full_path = ensure_parent_dir(path);
+
+#ifdef _WIN32
+    std::ofstream file(full_path, std::ios::binary);
+
+    auto utf16_target = stringToUtf16Le(link_target);
+    file << "!<symlink>"; // cygwin old symlink symbol
+    file.write(reinterpret_cast<const char *>(utf16_target.data()),
+               utf16_target.size());
+    file.close();
+
+    if (!setSystemAttribute(full_path.wstring()))
+        std::cerr << "Error: Could not set system attrib on file:" << full_path << std::endl;
+#else
+    if (fs::is_symlink(full_path) || fs::exists(full_path))
+    {
+        if (!fs::remove(full_path))
+        {
+            std::cerr << "Could not remove exist symlink path: " << full_path << std::endl;
+            return 1;
+        }
+    }
+    fs::create_symlink(link_target, full_path);
+#endif
+
+    return 0;
 }
 
 void init_extract_ctx(extract_ctx *ctx)
@@ -144,17 +229,7 @@ int extract_link(const std::string path, const std::string link_target)
 {
     auto full_path = ensure_parent_dir(path);
 
-    if (fs::is_symlink(full_path) || fs::exists(full_path))
-    {
-        if (!fs::remove(full_path))
-        {
-            std::cerr << "Could not remove exist symlink path: " << full_path << std::endl;
-            return 1;
-        }
-    }
-    fs::create_symlink(link_target, full_path);
-
-    return 0;
+    return xsymlink(link_target, path);
 }
 
 std::string escape_replace(const std::string &input)
