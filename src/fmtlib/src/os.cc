@@ -10,6 +10,7 @@
 #  define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#include <cstdlib>
 #include "fmt/os.h"
 
 #ifndef FMT_MODULE
