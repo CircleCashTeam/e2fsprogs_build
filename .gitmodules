@@ -1,0 +1,44 @@
+[submodule "src/e2fsprogs"]
+	path = src/e2fsprogs
+	url = https://android.googlesource.com/platform/external/e2fsprogs
+	branch = android-16.0.0_r2
+[submodule "src/core"]
+	path = src/core
+	url = https://android.googlesource.com/platform/system/core
+	branch = android-16.0.0_r2
+[submodule "src/libbase"]
+	path = src/libbase
+	url = https://android.googlesource.com/platform/system/libbase
+	branch = android-16.0.0_r2
+[submodule "src/zlib"]
+	path = src/zlib
+	url = https://android.googlesource.com/platform/external/zlib
+	branch = android-16.0.0_r2
+[submodule "src/boringssl"]
+	path = src/boringssl
+	url = https://android.googlesource.com/platform/external/boringssl
+	branch = android-16.0.0_r2
+[submodule "src/selinux"]
+	path = src/selinux
+	url = https://android.googlesource.com/platform/external/selinux
+	branch = android-16.0.0_r2
+[submodule "src/pcre"]
+	path = src/pcre
+	url = https://android.googlesource.com/platform/external/pcre
+	branch = android-16.0.0_r2
+[submodule "src/fmtlib"]
+	path = src/fmtlib
+	url = https://android.googlesource.com/platform/external/fmtlib
+	branch = android-16.0.0_r2
+[submodule "src/logging"]
+	path = src/logging
+	url = https://android.googlesource.com/platform/system/logging
+	branch = android-16.0.0_r2
+[submodule "src/jsoncpp"]
+	path = src/jsoncpp
+	url = https://android.googlesource.com/platform/external/jsoncpp
+	branch = android-16.0.0_r2
+[submodule "src/googletest"]
+	path = src/googletest
+	url = https://android.googlesource.com/platform/external/googletest
+	branch = android-16.0.0_r2
