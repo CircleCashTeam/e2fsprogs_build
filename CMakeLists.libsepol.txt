@@ -1,0 +1,96 @@
+set(target_name "sepol")
+
+set(target_cflags
+      "-D_GNU_SOURCE"
+      "-Wall"
+      "-Werror"
+      "-W"
+      "-Wundef"
+      "-Wshadow"
+      "-Wno-error=missing-noreturn"
+      "-Wno-error=unused-but-set-variable"
+      "-Wmissing-format-attribute"
+)
+
+if(UNIX)
+    list(APPEND target_cflags "-DHAVE_REALLOCARRAY")
+endif()
+
+set(target_dir
+    ${CMAKE_SOURCE_DIR}/src/selinux/libsepol
+)
+
+set(target_srcs
+        "${target_dir}/src/assertion.c"
+        "${target_dir}/src/avrule_block.c"
+        "${target_dir}/src/avtab.c"
+        "${target_dir}/src/boolean_record.c"
+        "${target_dir}/src/booleans.c"
+        "${target_dir}/src/conditional.c"
+        "${target_dir}/src/constraint.c"
+        "${target_dir}/src/context.c"
+        "${target_dir}/src/context_record.c"
+        "${target_dir}/src/debug.c"
+        "${target_dir}/src/ebitmap.c"
+        "${target_dir}/src/expand.c"
+        "${target_dir}/src/handle.c"
+        "${target_dir}/src/hashtab.c"
+        "${target_dir}/src/hierarchy.c"
+        "${target_dir}/src/iface_record.c"
+        "${target_dir}/src/interfaces.c"
+        "${target_dir}/src/kernel_to_cil.c"
+        "${target_dir}/src/kernel_to_common.c"
+        "${target_dir}/src/kernel_to_conf.c"
+        "${target_dir}/src/link.c"
+        "${target_dir}/src/mls.c"
+        "${target_dir}/src/module.c"
+        "${target_dir}/src/module_to_cil.c"
+        "${target_dir}/src/node_record.c"
+        "${target_dir}/src/nodes.c"
+        "${target_dir}/src/optimize.c"
+        "${target_dir}/src/polcaps.c"
+        "${target_dir}/src/policydb.c"
+        "${target_dir}/src/policydb_convert.c"
+        "${target_dir}/src/policydb_public.c"
+        "${target_dir}/src/policydb_validate.c"
+        "${target_dir}/src/port_record.c"
+        "${target_dir}/src/ports.c"
+        "${target_dir}/src/services.c"
+        "${target_dir}/src/sidtab.c"
+        "${target_dir}/src/symtab.c"
+        "${target_dir}/src/user_record.c"
+        "${target_dir}/src/users.c"
+        "${target_dir}/src/util.c"
+        "${target_dir}/src/write.c"
+        "${target_dir}/cil/src/android.c"
+        "${target_dir}/cil/src/cil_binary.c"
+        "${target_dir}/cil/src/cil_build_ast.c"
+        "${target_dir}/cil/src/cil.c"
+        "${target_dir}/cil/src/cil_copy_ast.c"
+        "${target_dir}/cil/src/cil_deny.c"
+        "${target_dir}/cil/src/cil_find.c"
+        "${target_dir}/cil/src/cil_fqn.c"
+        "${target_dir}/cil/src/cil_lexer.l"
+        "${target_dir}/cil/src/cil_list.c"
+        "${target_dir}/cil/src/cil_log.c"
+        "${target_dir}/cil/src/cil_mem.c"
+        "${target_dir}/cil/src/cil_parser.c"
+        "${target_dir}/cil/src/cil_policy.c"
+        "${target_dir}/cil/src/cil_post.c"
+        "${target_dir}/cil/src/cil_reset_ast.c"
+        "${target_dir}/cil/src/cil_resolve_ast.c"
+        "${target_dir}/cil/src/cil_stack.c"
+        "${target_dir}/cil/src/cil_strpool.c"
+        "${target_dir}/cil/src/cil_symtab.c"
+        "${target_dir}/cil/src/cil_tree.c"
+        "${target_dir}/cil/src/cil_verify.c"
+        "${target_dir}/cil/src/cil_write_ast.c"
+)
+
+add_library(${target_name} ${target_srcs})
+target_compile_options(${target_name} PUBLIC
+    ${target_cflags}
+)
+target_include_directories(${target_name} PUBLIC
+    ${libsepol_headers}
+)

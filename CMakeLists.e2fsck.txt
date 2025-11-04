@@ -1,0 +1,51 @@
+set(target_name "e2fsck")
+
+set(target_dir "${CMAKE_SOURCE_DIR}/src/e2fsprogs/e2fsck")
+
+set(target_srcs
+        "${target_dir}/e2fsck.c"
+        "${target_dir}/super.c"
+        "${target_dir}/pass1.c"
+        "${target_dir}/pass1b.c"
+        "${target_dir}/pass2.c"
+        "${target_dir}/pass3.c"
+        "${target_dir}/pass4.c"
+        "${target_dir}/pass5.c"
+        "${target_dir}/logfile.c"
+        "${target_dir}/journal.c"
+        "${target_dir}/recovery.c"
+        "${target_dir}/revoke.c"
+        "${target_dir}/badblocks.c"
+        "${target_dir}/util.c"
+        "${target_dir}/unix.c"
+        "${target_dir}/dirinfo.c"
+        "${target_dir}/dx_dirinfo.c"
+        "${target_dir}/ehandler.c"
+        "${target_dir}/problem.c"
+        "${target_dir}/message.c"
+        "${target_dir}/ea_refcount.c"
+        "${target_dir}/quota.c"
+        "${target_dir}/rehash.c"
+        "${target_dir}/region.c"
+        "${target_dir}/sigcatcher.c"
+        "${target_dir}/readahead.c"
+        "${target_dir}/extents.c"
+        "${target_dir}/encrypted_files.c"
+)
+
+add_executable(${target_name} ${target_srcs})
+target_compile_options(${target_name} PUBLIC
+    ${e2fsprogs_cflags}
+)
+target_include_directories(${target_name} PUBLIC
+    ${e2fsprogs_includes}
+    ${libext2_headers}
+)
+target_link_libraries(${target_name} PUBLIC
+    ext2fs
+    ext2_blkid
+    ext2_com_err
+    ext2_uuid
+    ext2_quota
+    ext2_e2p
+)

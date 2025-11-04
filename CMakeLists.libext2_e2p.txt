@@ -1,0 +1,45 @@
+include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
+
+set(target_name "ext2_e2p")
+
+set(libext2_e2p_dir
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/e2p"
+)
+
+set(libext2_e2p_srcs
+        "${libext2_e2p_dir}/encoding.c"
+        "${libext2_e2p_dir}/errcode.c"
+        "${libext2_e2p_dir}/feature.c"
+        "${libext2_e2p_dir}/fgetflags.c"
+        "${libext2_e2p_dir}/fsetflags.c"
+        "${libext2_e2p_dir}/fgetproject.c"
+        "${libext2_e2p_dir}/fsetproject.c"
+        "${libext2_e2p_dir}/fgetversion.c"
+        "${libext2_e2p_dir}/fsetversion.c"
+        "${libext2_e2p_dir}/getflags.c"
+        "${libext2_e2p_dir}/getversion.c"
+        "${libext2_e2p_dir}/hashstr.c"
+        "${libext2_e2p_dir}/iod.c"
+        "${libext2_e2p_dir}/ljs.c"
+        "${libext2_e2p_dir}/ls.c"
+        "${libext2_e2p_dir}/mntopts.c"
+        "${libext2_e2p_dir}/parse_num.c"
+        "${libext2_e2p_dir}/pe.c"
+        "${libext2_e2p_dir}/pf.c"
+        "${libext2_e2p_dir}/ps.c"
+        "${libext2_e2p_dir}/setflags.c"
+        "${libext2_e2p_dir}/setversion.c"
+        "${libext2_e2p_dir}/uuid.c"
+        "${libext2_e2p_dir}/ostype.c"
+        "${libext2_e2p_dir}/percent.c"
+)
+
+list(APPEND libext2_headers "${libext2_e2p_dir}")
+
+add_library(${target_name} ${libext2_e2p_srcs})
+target_compile_options(${target_name} PUBLIC ${e2fsprogs_cflags})
+
+target_include_directories(${target_name} PUBLIC
+    ${e2fsprogs_includes}
+    ${libext2_headers}
+)

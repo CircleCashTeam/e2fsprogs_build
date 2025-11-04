@@ -1,0 +1,39 @@
+include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
+
+set(target_name "ext2_quota")
+
+set(libext2_support_dir
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/support"
+)
+
+set(libext2_quota_srcs
+        "${libext2_support_dir}/devname.c"
+        "${libext2_support_dir}/dict.c"
+        "${libext2_support_dir}/mkquota.c"
+        "${libext2_support_dir}/parse_qtype.c"
+        "${libext2_support_dir}/plausible.c"
+        "${libext2_support_dir}/profile.c"
+        "${libext2_support_dir}/profile_helpers.c"
+        "${libext2_support_dir}/prof_err.c"
+        "${libext2_support_dir}/quotaio.c"
+        "${libext2_support_dir}/quotaio_tree.c"
+        "${libext2_support_dir}/quotaio_v2.c"
+)
+
+list(APPEND libext2_headers "${libext2_support_dir}")
+
+add_library(${target_name} ${libext2_quota_srcs})
+target_compile_options(${target_name} PUBLIC ${e2fsprogs_cflags})
+
+target_include_directories(${target_name} PUBLIC
+    ${e2fsprogs_includes}
+    ${libext2_headers}
+)
+
+add_library(ext2_support "${libext2_support_dir}/cstring.c")
+target_compile_options(ext2_support PUBLIC ${e2fsprogs_cflags})
+
+target_include_directories(ext2_support PUBLIC
+    ${e2fsprogs_includes}
+    ${libext2_headers}
+)
