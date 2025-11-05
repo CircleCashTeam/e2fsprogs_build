@@ -100,16 +100,22 @@ EXTRACT_FUNC(regular_file);
 EXTRACT_FUNC(directory);
 int extract_link(const std::string path, const std::string link_target);
 
-#define IS_DOT(name, len) ((name)[0] == '.')
-#define IS_DOTDOT(name, len) ((name)[0] == '.' && (name)[1] == '.')
+#define IS_DOT(name, len) (len == 1 && (name)[0] == '.')
+#define IS_DOTDOT(name, len) (len == 2 && (name)[0] == '.' && (name)[1] == '.')
 #define IS_DOT_DOTDOT(name, len) (IS_DOT(name, len) || IS_DOTDOT(name, len))
 
 #ifndef PATH_MAX
 #ifndef _WIN32
-#define PATH_MAX 4096
+#define PATH_MAX 4095
 #else
-#define PATH_MAX 256
+#define PATH_MAX 255
 #endif
+#endif
+
+#ifdef _WIN32
+#define _mkdir(x, y) mkdir(x)
+#else
+#define _mkdir(x, y) mkdir(x, y)
 #endif
 
 #define EXTRACT_XATTR_SELINUX_KEY "security.selinux"

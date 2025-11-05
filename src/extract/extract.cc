@@ -199,7 +199,7 @@ EXTRACT_FUNC(directory)
 {
     auto full_path = ensure_parent_dir(path);
 
-    if (!fs::exists(full_path.parent_path()) && !fs::create_directory(full_path))
+    if (!(access(full_path.string().c_str(), F_OK) == 0) && !(_mkdir(full_path.string().c_str(), 0777) == 0))
     {
         std::cerr << "Error: could not create directory: " << full_path << std::endl;
         return 1;
