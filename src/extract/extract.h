@@ -17,6 +17,10 @@
 #ifdef _WIN32
 typedef uint32_t uid_t;
 typedef uint32_t gid_t;
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #endif
 
 typedef struct

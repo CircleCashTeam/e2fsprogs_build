@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 
 project(e2fsprogs_build LANGUAGES C CXX)
 
@@ -16,6 +16,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     else()
         link_libraries(c++)
     endif()
+
+    set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
+
+    # enable
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
+    # use lld
+    add_link_options(-fuse-ld=lld)
 endif()
 
 # Lib with cmake can direct import
@@ -66,9 +74,9 @@ if(PREFER_STATIC_LINKING)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
     set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -O2 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions"
+        "${CMAKE_CXX_FLAGS} -O3 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions"
     )
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections -s")
 endif()

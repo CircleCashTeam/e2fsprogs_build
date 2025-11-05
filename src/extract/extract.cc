@@ -9,10 +9,6 @@
 
 #include "symlink.h"
 
-#ifdef _WIN32
-#include "windows_fast_file_writer.h"
-#endif
-
 namespace fs = std::filesystem;
 
 static inline fs::path ensure_parent_dir(const std::string file_path)
@@ -57,27 +53,32 @@ static bool setSystemAttribute(const std::wstring &filePath)
     return true;
 }
 
-std::vector<uint8_t> stringToUtf16Le(const std::string& utf8_str, bool include_bom = true) {
+std::vector<uint8_t> stringToUtf16Le(const std::string &utf8_str, bool include_bom = true)
+{
     std::vector<uint8_t> result;
-    
-    if (include_bom) {
+
+    if (include_bom)
+    {
         result.push_back(0xFF);
         result.push_back(0xFE);
     }
-    
-    if (utf8_str.empty()) {
+
+    if (utf8_str.empty())
+    {
         return result;
     }
-    
+
     int wide_len = MultiByteToWideChar(CP_UTF8, 0, utf8_str.c_str(), -1, nullptr, 0);
-    if (wide_len == 0) {
+    if (wide_len == 0)
+    {
         return result;
     }
-    
+
     std::vector<wchar_t> wide_buffer(wide_len);
     MultiByteToWideChar(CP_UTF8, 0, utf8_str.c_str(), -1, wide_buffer.data(), wide_len);
-    
-    for (size_t i = 0; i < (size_t)wide_len - 1; ++i) {
+
+    for (size_t i = 0; i < (size_t)wide_len - 1; ++i)
+    {
         wchar_t c = wide_buffer[i];
         result.push_back(static_cast<uint8_t>(c & 0xFF));
         result.push_back(static_cast<uint8_t>((c >> 8) & 0xFF));
@@ -85,7 +86,7 @@ std::vector<uint8_t> stringToUtf16Le(const std::string& utf8_str, bool include_b
 
     result.push_back(0x00);
     result.push_back(0x00);
-    
+
     return result;
 }
 #endif
@@ -95,12 +96,13 @@ int xsymlink(const std::string link_target, const std::string path)
     auto full_path = ensure_parent_dir(path);
 
 #ifdef _WIN32
-    std::ofstream file(full_path, std::ios::binary);
+    std::ofstream file(full_path, std::ios::out | std::ios::binary);
 
     auto utf16_target = stringToUtf16Le(link_target);
     file << "!<symlink>"; // cygwin old symlink symbol
     file.write(reinterpret_cast<const char *>(utf16_target.data()),
                utf16_target.size());
+    file.flush();
     file.close();
 
     if (!setSystemAttribute(full_path.wstring()))
@@ -150,21 +152,13 @@ EXTRACT_FUNC(regular_file)
         return 1;
     }
 
-#ifdef _WIN32
-    WindowsFastFileWriter writer;
-    if (!writer.open(full_path.string()))
-    {
-        ext2fs_file_close(file);
-        return -1;
-    }
-#else
-    std::ofstream outfile(full_path, std::ios::binary);
+    std::ofstream outfile(full_path, std::ios::out | std::ios::binary);
     if (!outfile)
     {
         ext2fs_file_close(file);
         return -1;
     }
-#endif
+
     const auto fsize = ext2fs_file_get_size(file);
     ext2_off_t pos = 0;
     uint32_t read_size;
@@ -180,12 +174,7 @@ EXTRACT_FUNC(regular_file)
 
         if (read_size > 0)
         {
-#ifdef _WIN32
-            if (!writer.write(buf, read_size))
-                break;
-#else
             outfile.write(buf, read_size);
-#endif
             pos += read_size;
         }
         else
