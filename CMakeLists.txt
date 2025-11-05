@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.10)
 
 project(e2fsprogs_build LANGUAGES C CXX)
 
@@ -12,7 +12,7 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # Android libs requried libc++
     if(NOT WIN32)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
     else()
         link_libraries(c++)
     endif()
