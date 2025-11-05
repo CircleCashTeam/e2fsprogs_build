@@ -11,6 +11,7 @@ function build() {
     CC="${target}-clang" \
     CXX="${target}-clang++" \
     cmake \
+        -DCMAKE_BUILD_TYPE=Release \
         -DPREFER_STATIC_LINKING=ON \
         -DCMAKE_SYSTEM_NAME=Windows \
         -DCMAKE_LINKER=ld.lld \
