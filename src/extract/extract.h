@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
+#include <sys/types.h>
 #include <vector>
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_err.h>
