@@ -45,7 +45,12 @@ int main(int argc, char **argv)
     }
 
     // set out image dir
-    extract_config.volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
+    //extract_config.volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
+    auto xfile_name = fs::path(file_name).filename().string();
+    if (xfile_name[xfile_name.length() - 4] == '.')
+        xfile_name = xfile_name.substr(0, xfile_name.length() - 4);
+
+    extract_config.volume_name = xfile_name;
     extract_config.outdir = (fs::path(extract_config.extract_dir) /
                              reinterpret_cast<char *>(ctx.fs->super->s_volume_name))
                                 .string();
