@@ -31,11 +31,7 @@ int main(int argc, char **argv)
         EXT2_FLAG_64BITS | EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS | EXT2_FLAG_PRINT_PROGRESS,
         0,
         0,
-#ifdef _WIN32
-        windows_io_manager,
-#else
         unix_io_manager,
-#endif
         &ctx.fs);
 
     if (ret)
