@@ -10,8 +10,9 @@ extract_config_t extract_config;
 int main(int argc, char **argv)
 {
     string file_name;
-    errcode_t ret = 0;
+    errcode_t ret = 0, retval_csum = 0;
     extract_ctx ctx;
+    char *error_csum = nullptr;
 
     if (argc < 2)
     {
@@ -26,17 +27,29 @@ int main(int argc, char **argv)
 
     initialize_ext2_error_table();
 
+    int flags = EXT2_FLAG_SOFTSUPP_FEATURES |
+		EXT2_FLAG_64BITS | EXT2_FLAG_THREADS | 
+        EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS |
+        EXT2_FLAG_PRINT_PROGRESS | EXT2_FLAG_FORCE;
+
+try_open_again:
     ret = ext2fs_open(
         file_name.c_str(),
-        EXT2_FLAG_64BITS | EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS | EXT2_FLAG_PRINT_PROGRESS,
+        flags,
         0,
         0,
         unix_io_manager,
         &ctx.fs);
 
+	flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+	if (ret && !retval_csum) {
+		retval_csum = ret;
+		error_csum = _("while trying to open %s");
+		goto try_open_again;
+	}
     if (ret)
     {
-        com_err(argv[0], ret, "while opening filesystem");
+        com_err(argv[0], ret, "while opening filesystem", error_csum, error_csum);
         return 1;
     }
 

@@ -119,6 +119,8 @@ int extract_link(const std::string path, const std::string link_target);
 #define _mkdir(x, y) mkdir(x, y)
 #endif
 
+#define _(x) (x)
+
 #define EXTRACT_XATTR_SELINUX_KEY "security.selinux"
 #define EXTRACT_XATTR_CAPABILITIES_KEY "security.capability"
 
