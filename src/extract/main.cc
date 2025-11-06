@@ -1,4 +1,5 @@
 #include "extract.h"
+#include <chrono>
 #include <filesystem>
 #include <fmt/format.h>
 
@@ -19,6 +20,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    auto start_time = std::chrono::system_clock::now();
+
     file_name = argv[1];
 
     init_extract_config();
@@ -27,9 +30,9 @@ int main(int argc, char **argv)
     initialize_ext2_error_table();
 
     int flags = EXT2_FLAG_SOFTSUPP_FEATURES |
-		EXT2_FLAG_64BITS | EXT2_FLAG_THREADS | 
-        EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS |
-        EXT2_FLAG_PRINT_PROGRESS | EXT2_FLAG_FORCE;
+                EXT2_FLAG_64BITS | EXT2_FLAG_THREADS |
+                EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS |
+                EXT2_FLAG_PRINT_PROGRESS | EXT2_FLAG_FORCE;
 
 try_open_again:
     ret = ext2fs_open(
@@ -40,11 +43,12 @@ try_open_again:
         unix_io_manager,
         &ctx.fs);
 
-	flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
-	if (ret && !retval_csum) {
-		retval_csum = ret;
-		goto try_open_again;
-	}
+    flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+    if (ret && !retval_csum)
+    {
+        retval_csum = ret;
+        goto try_open_again;
+    }
     if (ret)
     {
         com_err(argv[0], ret, "while opening filesystem");
@@ -52,15 +56,15 @@ try_open_again:
     }
 
     // set out image dir
-    //extract_config.volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
+    // extract_config.volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
     auto xfile_name = fs::path(file_name).filename().string();
     if (xfile_name[xfile_name.length() - 4] == '.')
         xfile_name = xfile_name.substr(0, xfile_name.length() - 4);
 
     extract_config.volume_name = xfile_name;
-    //extract_config.outdir = (fs::path(extract_config.extract_dir) /
-    //                         reinterpret_cast<char *>(ctx.fs->super->s_volume_name))
-    //                            .string();
+    // extract_config.outdir = (fs::path(extract_config.extract_dir) /
+    //                          reinterpret_cast<char *>(ctx.fs->super->s_volume_name))
+    //                             .string();
     extract_config.outdir = (fs::path(extract_config.extract_dir) / xfile_name).string();
     extract_config.config_dir = (fs::path(extract_config.extract_dir) / "config").string();
 
@@ -77,7 +81,7 @@ try_open_again:
     process_directory(ctx.parent_ino, &ctx);
 
     // configs
-    //for (const auto& element : extract_config.configs) {
+    // for (const auto& element : extract_config.configs) {
     //    cout << fmt::format("path: {}, uid: {}, gid: {}, mode: {:#4o}, is_symlink: {}, context: {}, capabilities: 0x{:x}",
     //        element.path, element.uid, element.gid, element.mode & 0777, element.is_symlink, element.context, element.capabilities
     //    ) << endl;
@@ -86,5 +90,11 @@ try_open_again:
     extract_file_contexts();
 
     ext2fs_close(ctx.fs);
+
+    auto end_time = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+    std::cout << fmt::format("Tooks: {:.2f} seconds", duration.count() / 1000.0) << std::endl;
+
     return 0;
 }
