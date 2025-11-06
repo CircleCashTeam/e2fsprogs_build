@@ -58,9 +58,10 @@ try_open_again:
         xfile_name = xfile_name.substr(0, xfile_name.length() - 4);
 
     extract_config.volume_name = xfile_name;
-    extract_config.outdir = (fs::path(extract_config.extract_dir) /
-                             reinterpret_cast<char *>(ctx.fs->super->s_volume_name))
-                                .string();
+    //extract_config.outdir = (fs::path(extract_config.extract_dir) /
+    //                         reinterpret_cast<char *>(ctx.fs->super->s_volume_name))
+    //                            .string();
+    extract_config.outdir = (fs::path(extract_config.extract_dir) / xfile_name).string();
     extract_config.config_dir = (fs::path(extract_config.extract_dir) / "config").string();
 
     cout << "Image volume name: " << extract_config.volume_name << endl;
