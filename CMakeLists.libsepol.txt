@@ -3,7 +3,6 @@ set(target_name "sepol")
 set(target_cflags
       "-D_GNU_SOURCE"
       "-Wall"
-      "-Werror"
       "-W"
       "-Wundef"
       "-Wshadow"

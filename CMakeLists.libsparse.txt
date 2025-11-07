@@ -13,10 +13,6 @@ set(libsparse_srcs
     "${libsparse_srcs_dir}/sparse_read.cpp"
 )
 
-set(libsparse_cflags
-    "-Werror"
-)
-
 add_library(${target_name} ${libsparse_srcs})
 target_compile_options(${target_name} PUBLIC ${libsparse_cflags})
 target_include_directories(${target_name} PUBLIC

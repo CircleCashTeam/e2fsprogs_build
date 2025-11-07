@@ -1,6 +1,5 @@
 set(e2fsprogs_cflags
         "-Wall"
-        "-Werror"
         # Some warnings that Android's build system enables by default are not
         # supported by upstream e2fsprogs.  When such a warning shows up,
         # disable it below.  Please don't disable warnings that upstream

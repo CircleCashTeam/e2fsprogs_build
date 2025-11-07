@@ -12,7 +12,7 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # Android libs requried libc++
     if(NOT WIN32)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+        link_libraries(stdc++)
     else()
         link_libraries(c++)
     endif()
@@ -24,6 +24,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
     # use lld
     add_link_options(-fuse-ld=lld)
+else()
+    link_libraries(stdc++)
 endif()
 
 # Lib with cmake can direct import
