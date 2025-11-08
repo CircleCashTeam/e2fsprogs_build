@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     if (argc < 2)
     {
         cerr << "Error: Need to specific system image path." << endl;
-        return 1;
+        return -1;
     }
 
     auto start_time = std::chrono::system_clock::now();
@@ -60,31 +60,32 @@ try_open_again:
     if (ctx.fs && ctx.fs->io) {
         ret = ctx.fs->io->manager->set_option(ctx.fs->io, "mmap", "1");
         if (ret) {
-            printf("Warning: Failed to enable mmap: %s\n", error_message(ret));
+            cout << "Warning: Failed to enable mmap: " << error_message(ret) << endl;
         } else {
-            printf("mmap acceleration enabled\n");
+            cout << "mmap acceleration enable" << endl;
         }
     }
+#else
+    cout << "mmap acceleration disable" << endl;
 #endif
 #endif
 
-    // set out image dir
-    // extract_config.volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
     auto xfile_name = fs::path(file_name).filename().string();
     if (xfile_name[xfile_name.length() - 4] == '.')
         xfile_name = xfile_name.substr(0, xfile_name.length() - 4);
-
     extract_config.volume_name = xfile_name;
     // extract_config.outdir = (fs::path(extract_config.extract_dir) /
     //                          reinterpret_cast<char *>(ctx.fs->super->s_volume_name))
     //                             .string();
+    auto volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
+    extract_config.extract_dir = fs::absolute(extract_config.extract_dir).string();
     extract_config.outdir = (fs::path(extract_config.extract_dir) / xfile_name).string();
     extract_config.config_dir = (fs::path(extract_config.extract_dir) / "config").string();
 
-    cout << "Image volume name: " << extract_config.volume_name << endl;
+    cout << "Image volume name: " << volume_name << endl;
     cout << "Setup extract dir: " << extract_config.extract_dir << endl;
-    cout << "Setup image output dir: " << extract_config.outdir << endl;
-    cout << "Setup config output dir: " << extract_config.config_dir << endl;
+    cout << "Setup image dir: " << extract_config.outdir << endl;
+    cout << "Setup config dir: " << extract_config.config_dir << endl;
     cout << "Record inode num: " << ctx.fs->super->s_inodes_count << endl;
     cout << "Record free inode num: " << ctx.fs->super->s_free_inodes_count << endl;
     cout << "Record used inode num: " << ctx.fs->super->s_inodes_count - ctx.fs->super->s_free_inodes_count << endl;
@@ -110,7 +111,7 @@ try_open_again:
     auto end_time = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
-    std::cout << fmt::format("Tooks: {:.2f} seconds", duration.count() / 1000.0) << std::endl;
+    cout << fmt::format("Tooks: {:.2f} seconds", duration.count() / 1000.0) << endl;
 
     return 0;
 }

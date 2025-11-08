@@ -27,7 +27,7 @@ static inline fs::path ensure_parent_dir(const std::string file_path)
     {
         if (!fs::create_directories(full_path.parent_path()))
         {
-            std::cerr << "Error: Could not create directory: " << full_path.parent_path() << std::endl;
+            std::cerr << "Error: Could not create directory: " << full_path.parent_path().string() << std::endl;
         }
     }
 
@@ -279,7 +279,7 @@ int extract_fs_config()
         file.write(common.c_str(), common.size());
     }
 
-    std::cout << "Extract fs_config at: " << full_path << std::endl;
+    std::cout << "Extract fs_config at: " << full_path.string() << std::endl;
 
     return 0;
 }
@@ -318,7 +318,7 @@ int extract_file_contexts()
         }
     }
 
-    std::cout << "Extract file_contexts at: " << full_path << std::endl;
+    std::cout << "Extract file_contexts at: " << full_path.string() << std::endl;
 
     return 0;
 }
