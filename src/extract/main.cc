@@ -55,6 +55,19 @@ try_open_again:
         return 1;
     }
 
+#ifdef _WIN32
+#ifdef WINDOWS_IO_MANAGER_USE_MMAP_READ
+    if (ctx.fs && ctx.fs->io) {
+        ret = ctx.fs->io->manager->set_option(ctx.fs->io, "mmap", "1");
+        if (ret) {
+            printf("Warning: Failed to enable mmap: %s\n", error_message(ret));
+        } else {
+            printf("mmap acceleration enabled\n");
+        }
+    }
+#endif
+#endif
+
     // set out image dir
     // extract_config.volume_name = reinterpret_cast<char *>(ctx.fs->super->s_volume_name);
     auto xfile_name = fs::path(file_name).filename().string();
@@ -72,6 +85,9 @@ try_open_again:
     cout << "Setup extract dir: " << extract_config.extract_dir << endl;
     cout << "Setup image output dir: " << extract_config.outdir << endl;
     cout << "Setup config output dir: " << extract_config.config_dir << endl;
+    cout << "Record inode num: " << ctx.fs->super->s_inodes_count << endl;
+    cout << "Record free inode num: " << ctx.fs->super->s_free_inodes_count << endl;
+    cout << "Record used inode num: " << ctx.fs->super->s_inodes_count - ctx.fs->super->s_free_inodes_count << endl;
 
     // count how many file need to be extract
     extract_config.total_files = count_files_recursive(ctx.fs, EXT2_ROOT_INO);
