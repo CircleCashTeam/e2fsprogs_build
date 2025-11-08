@@ -21,10 +21,10 @@ set(target_srcs
 )
 
 list(APPEND libext2_headers "${target_dir}")
-add_library(${target_name} ${target_srcs})
-target_compile_options(${target_name} PUBLIC ${e2fsprogs_cflags})
+add_library(${target_name} STATIC ${target_srcs})
+target_compile_options(${target_name} PRIVATE ${e2fsprogs_cflags})
 
-target_include_directories(${target_name} PUBLIC
+target_include_directories(${target_name} PRIVATE
     ${e2fsprogs_includes}
     ${libext2_headers}
 )

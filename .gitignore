@@ -1,5 +1,6 @@
-/build/**
+/build*/**
 /llvm*
 /llvm*/**
 /.vscode/**
 /.idea/**
+/*.img

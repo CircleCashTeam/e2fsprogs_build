@@ -14,7 +14,7 @@ set(libutils_headers "${CMAKE_SOURCE_DIR}/src/core/libutils/include" CACHE STRIN
 set(libselinux_headers "${CMAKE_SOURCE_DIR}/src/selinux/libselinux/include" CACHE STRING "" FORCE)
 set(libsepol_headers
     "${CMAKE_SOURCE_DIR}/src/selinux/libsepol/include"
-    "${CMAKE_SOURCE_DIR}/src/selinux/libsepol/cil//include"
+    "${CMAKE_SOURCE_DIR}/src/selinux/libsepol/cil/include"
     CACHE STRING "" FORCE
 )
 set(libpcre2_headers "${CMAKE_SOURCE_DIR}/src/pcre/include" CACHE STRING "" FORCE)

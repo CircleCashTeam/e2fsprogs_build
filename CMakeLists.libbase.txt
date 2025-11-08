@@ -19,7 +19,7 @@ set(libbase_src_dir "${CMAKE_SOURCE_DIR}/src/libbase")
 set(libbase_src
     "${libbase_src_dir}/abi_compatibility.cpp"
     "${libbase_src_dir}/chrono_utils.cpp"
-    #"${libbase_src_dir}/cmsg.cpp"
+    "${libbase_src_dir}/cmsg.cpp"
     "${libbase_src_dir}/file.cpp"
     "${libbase_src_dir}/hex.cpp"
     "${libbase_src_dir}/logging.cpp"
@@ -36,23 +36,20 @@ set(libbase_src
     "${libbase_src_dir}/test_utils.cpp"
 )
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND libbase_src_dir "${libbase_src_dir}/errors_unix.cpp")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    list(APPEND libbase_src_dir "${libbase_src_dir}/errors_unix.cpp")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    list(APPEND libbase_src_dir 
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    list(APPEND libbase_src "${libbase_src_dir}/errors_unix.cpp")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    list(APPEND libbase_src "${libbase_src_dir}/errors_unix.cpp")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    list(APPEND libbase_src
         "${libbase_src_dir}/errors_windows.cpp"
         "${libbase_src_dir}/utf8.cpp"
     )
     list(REMOVE_ITEM libbase_src "${libbase_src_dir}/cmsg.cpp")
 endif()
-add_library(${target_name}
-    ${libbase_src}
-)
-
-target_compile_options(${target_name} PUBLIC ${libbase_cflags})
-target_include_directories(${target_name} PUBLIC
+add_library(${target_name} STATIC ${libbase_src})
+target_compile_options(${target_name} PRIVATE ${libbase_cflags})
+target_include_directories(${target_name} PRIVATE
     ${fmtlib_headers}
     ${libbase_headers}
     ${liblog_headers}

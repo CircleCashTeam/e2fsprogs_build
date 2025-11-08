@@ -79,11 +79,9 @@ set(target_srcs
         "${target_dir}/src/stringrep.c"
 )
 
-add_library(${target_name} ${target_srcs})
-target_compile_options(${target_name} PUBLIC
-    ${target_cflags}
-)
-target_include_directories(${target_name} PUBLIC
+add_library(${target_name} STATIC ${target_srcs})
+target_compile_options(${target_name} PRIVATE ${target_cflags})
+target_include_directories(${target_name} PRIVATE
     ${libbase_headers}
     ${libcutils_headers}
     ${liblog_headers}
@@ -92,4 +90,4 @@ target_include_directories(${target_name} PUBLIC
     ${libselinux_headers}
     ${target_dir}/src
 )
-target_link_libraries(${target_name} PUBLIC pcre2)
+target_link_libraries(${target_name} PRIVATE pcre2)

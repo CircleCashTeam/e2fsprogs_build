@@ -30,9 +30,8 @@ endif()
 
 add_library(${target_name} ${liblog_src})
 
-target_compile_options(${target_name} PUBLIC
+target_compile_options(${target_name} PRIVATE
     "-Wall"
-    "-Werror"
     "-Wextra"
     "-Wexit-time-destructors"
     "-DLIBLOG_LOG_TAG=1006"
@@ -40,14 +39,14 @@ target_compile_options(${target_name} PUBLIC
     "-DANDROID_DEBUGGABLE=0"
 )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${target_name} PUBLIC
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    target_compile_options(${target_name} PRIVATE
         "-UANDROID_DEBUGGABLE"
         "-DANDROID_DEBUGGABLE=1"
     )
 endif()
 
-target_include_directories(${target_name} PUBLIC
+target_include_directories(${target_name} PRIVATE
     ${libbase_headers}
     ${libcutils_headers}
     ${liblog_headers}

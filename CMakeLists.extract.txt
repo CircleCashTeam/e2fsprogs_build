@@ -10,15 +10,15 @@ set(target_srcs
 )
 
 add_executable(${target_name} ${target_srcs})
-target_compile_options(${target_name} PUBLIC
+target_compile_options(${target_name} PRIVATE
     ${e2fsprogs_cflags} -Wno-error=unused-parameter -Wno-error=unused-variable
 )
-target_include_directories(${target_name} PUBLIC
+target_include_directories(${target_name} PRIVATE
     ${e2fsprogs_includes}
     ${libext2_headers}
     ${CMAKE_SOURCE_DIR}/src/e2fsprogs/e2fsck
 )
-target_link_libraries(${target_name} PUBLIC
+target_link_libraries(${target_name} PRIVATE
     ext2_com_err
     ext2fs
     fmt

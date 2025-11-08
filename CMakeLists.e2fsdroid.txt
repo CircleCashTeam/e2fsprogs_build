@@ -18,7 +18,7 @@ target_compile_options(${target_name} PUBLIC
     "-Wno-error=macro-redefined"
     "-Wno-error=sign-compare"
 )
-target_include_directories(${target_name} PUBLIC
+target_include_directories(${target_name} PRIVATE
     ${e2fsprogs_includes}
     ${libext2_headers}
     ${libbase_headers}
@@ -29,7 +29,7 @@ target_include_directories(${target_name} PUBLIC
     ${libcrypto_headers}
     ${liblog_headers}
 )
-target_link_libraries(${target_name} PUBLIC
+target_link_libraries(${target_name} PRIVATE
     ext2_com_err
     ext2_misc
     ext2fs
