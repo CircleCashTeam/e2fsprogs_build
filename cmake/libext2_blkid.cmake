@@ -1,5 +1,3 @@
-include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
-
 set(target_name "ext2_blkid")
 
 set(libext2_blkid_dir

@@ -1,5 +1,3 @@
-include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
-
 set(libext2_support_dir
     "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/support"
 )

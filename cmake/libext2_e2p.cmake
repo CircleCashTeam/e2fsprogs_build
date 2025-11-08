@@ -1,5 +1,3 @@
-include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
-
 set(target_name "ext2_e2p")
 
 set(libext2_e2p_dir

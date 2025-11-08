@@ -1,5 +1,3 @@
-include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
-
 set(target_name "ext2_uuid")
 
 set(libext2_uuid_dir

@@ -1,5 +1,3 @@
-include("${CMAKE_SOURCE_DIR}/CMakeLists.e2fsprogs.txt")
-
 set(target_name "ext2_com_err")
 
 set(libext2_com_err_dir
