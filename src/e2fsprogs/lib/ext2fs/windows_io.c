@@ -106,6 +106,12 @@ struct windows_private_data {
 	struct windows_cache cache[CACHE_SIZE];
 	void	*bounce;
 	struct struct_io_stats io_stats;
+#ifdef WINDOWS_IO_MANAGER_USE_MMAP_READ
+	// MMap support
+	void *mmap_addr;
+	size_t mmap_size;
+	int use_mmap;
+#endif
 };
 
 #define IS_ALIGNED(n, align) ((((uintptr_t) n) & \
@@ -161,6 +167,78 @@ static LARGE_INTEGER make_large_integer(LONGLONG value)
 	li.QuadPart = value;
 	return li;
 }
+
+#ifdef WINDOWS_IO_MANAGER_USE_MMAP_READ
+/*
+ * Here are read only mmap function
+ */
+static errcode_t windows_munmap(io_channel channel)
+{
+	struct windows_private_data *data;
+
+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+	data = (struct windows_private_data *) channel->private_data;
+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
+
+	if (!data->use_mmap) {
+		return 0;
+	}
+
+	if (!UnmapViewOfFile(data->mmap_addr)) {
+		return GetLastError();
+	}
+
+	data->use_mmap = 0;
+	data->mmap_addr = NULL;
+	data->mmap_size = 0;
+
+	return 0;
+}
+
+static errcode_t windows_mmap(io_channel channel, size_t length,
+							  off_t offset, void **mapped_addr)
+{
+	struct windows_private_data *data;
+	HANDLE hMap;
+	void *map_addr;
+
+	EXT2_CHECK_MAGIC(channel, EXT2_ET_MAGIC_IO_CHANNEL);
+	data = (struct windows_private_data *) channel->private_data;
+	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
+
+	// Read only
+	//if (!(data->flags & IO_FLAG_RW)) {
+	//    return EXT2_ET_OP_NOT_SUPPORTED;
+	//}
+
+	if (data->use_mmap) {
+		windows_munmap(channel);
+	}
+
+	hMap = CreateFileMapping(data->handle, NULL, PAGE_READONLY,
+							 0, 0, NULL);
+	if (!hMap) {
+		return GetLastError();
+	}
+
+	map_addr = MapViewOfFile(hMap, FILE_MAP_READ,
+							 (DWORD)(offset >> 32),
+							 (DWORD)(offset & 0xFFFFFFFF),
+							 length);
+	CloseHandle(hMap);
+
+	if (!map_addr) {
+		return GetLastError();
+	}
+
+	data->mmap_addr = map_addr;
+	data->mmap_size = length;
+	data->use_mmap = 1;
+
+	*mapped_addr = map_addr;
+	return 0;
+}
+#endif
 
 /*
  * Here are the raw I/O functions
@@ -663,6 +741,12 @@ static errcode_t windows_close(io_channel channel)
 	if (--channel->refcount > 0)
 		return 0;
 
+#ifdef WINDOWS_IO_MANAGER_USE_MMAP_READ
+	if (data->use_mmap) {
+		windows_munmap(channel);
+	}
+#endif
+
 #ifndef NO_IO_CACHE
 	retval = flush_cached_blocks(channel, data, 0);
 #endif
@@ -718,6 +802,22 @@ static errcode_t windows_read_blk64(io_channel channel, unsigned long long block
 	data = (struct windows_private_data *) channel->private_data;
 	EXT2_CHECK_MAGIC(data, EXT2_ET_MAGIC_WINDOWS_IO_CHANNEL);
 
+#ifdef WINDOWS_IO_MANAGER_USE_MMAP_READ
+	if (data->use_mmap) {
+		size_t offset = block * channel->block_size + data->offset;
+		size_t size = (count < 0) ? -count : count * channel->block_size;
+
+		if (offset + size > data->mmap_size) {
+			goto normal_read;
+		}
+
+		memcpy(buf, (char*)data->mmap_addr + offset, size);
+		data->io_stats.bytes_read += size;
+		return 0;
+	}
+#endif
+
+normal_read:
 #ifdef NO_IO_CACHE
 	return raw_read_blk(channel, data, block, count, buf);
 #else
@@ -907,6 +1007,19 @@ static errcode_t windows_set_option(io_channel channel, const char *option,
 			return EXT2_ET_INVALID_ARGUMENT;
 		return 0;
 	}
+#ifdef WINDOWS_IO_MANAGER_USE_MMAP_READ
+	else if (!strcmp(option, "mmap")) {
+		if (!arg || strcmp(arg, "1") != 0) {
+			return windows_munmap(channel);
+		} else {
+			ext2fs_struct_stat st;
+			if (ext2fs_fstat(data->dev, &st) == 0) {
+				return windows_mmap(channel, st.st_size, 0, &data->mmap_addr);
+			}
+			return EXT2_ET_UNIMPLEMENTED;
+		}
+	}
+#endif
 	return EXT2_ET_INVALID_ARGUMENT;
 }
 
