@@ -1,7 +1,3 @@
-[submodule "src/e2fsprogs"]
-	path = src/e2fsprogs
-	url = https://android.googlesource.com/platform/external/e2fsprogs
-	branch = android-16.0.0_r2
 [submodule "src/core"]
 	path = src/core
 	url = https://android.googlesource.com/platform/system/core
@@ -21,10 +17,6 @@
 [submodule "src/pcre"]
 	path = src/pcre
 	url = https://android.googlesource.com/platform/external/pcre
-	branch = android-16.0.0_r2
-[submodule "src/fmtlib"]
-	path = src/fmtlib
-	url = https://android.googlesource.com/platform/external/fmtlib
 	branch = android-16.0.0_r2
 [submodule "src/logging"]
 	path = src/logging
