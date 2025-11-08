@@ -188,14 +188,7 @@ static int process_file(
     progress_plus();
 
     if (name)
-#ifndef _WIN32
-        ext2fs_free_mem(&name);
-#else
-    { // Why?
         free(name);
-        name = nullptr;
-    }
-#endif
 
     return 0;
 }
