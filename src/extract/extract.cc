@@ -1,12 +1,9 @@
 #include "extract.h"
 #include <fstream>
 #include <filesystem>
-#include <codecvt>
-#include <unordered_set>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <fmt/format.h>
-
+#include <vector>
 #include "symlink.h"
 
 namespace fs = std::filesystem;
@@ -223,18 +220,16 @@ int extract_link(const std::string path, const std::string link_target)
 
 std::string escape_replace(const std::string &input)
 {
-    static const std::unordered_set<char> specialChars = {
+    static const std::vector<char> specialChars = {
         '.', '^', '$', '*', '+', '?', '(', ')',
         '[', ']', '{', '}', '|', '\\', '<', '>'};
 
     std::string result;
-    // result.reserve(input.length() * 2);
-
     for (char c : input)
     {
-        if (specialChars.count(c))
+        if (std::find(specialChars.begin(), specialChars.end(),c) != specialChars.end())
         {
-            result += '\\';
+            result += "\\";
         }
         result += c;
     }
