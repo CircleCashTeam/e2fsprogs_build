@@ -10,19 +10,19 @@ set(target_srcs
 )
 
 add_executable(${target_name} ${target_srcs})
-target_compile_options(${target_name} PRIVATE
-    ${e2fsprogs_cflags} -Wno-error=unused-parameter -Wno-error=unused-variable
-)
+target_compile_options(${target_name} PRIVATE ${e2fsprogs_cflags})
 target_include_directories(${target_name} PRIVATE
-    ${e2fsprogs_includes}
-    ${libext2_headers}
-    ${CMAKE_SOURCE_DIR}/src/e2fsprogs/e2fsck
+        "${e2fsprogs_includes}"
+        "${libext2_headers}"
+        "${target_dir}"
+        "${CMAKE_SOURCE_DIR}/src/e2fsprogs/e2fsck"
 )
+
 target_link_libraries(${target_name} PRIVATE
-    ext2_com_err
-    ext2fs
-    fmt
-    sparse
-    base
-    zlibstatic
+        ext2_com_err
+        ext2fs
+        fmt
+        sparse
+        base
+        zlibstatic
 )

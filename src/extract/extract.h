@@ -54,16 +54,16 @@ struct config_ctx {
 };
 
 struct extract_config_t {
-    bool verbose;
     std::string outdir;
     std::string extract_dir;
     std::string config_dir;
     std::string volume_name;
-    uint32_t total_files;
-    uint32_t processed_files;
+    int32_t total_files = 0;
+    int32_t processed_files = 0;
     int32_t last_percent = -1;
     std::vector<config_ctx> configs;
 };
+extern extract_config_t extract_config;
 
 // capabilities
 struct vfs_cap_data {
@@ -74,12 +74,6 @@ struct vfs_cap_data {
     } data[2];
 };
 
-extern extract_config_t extract_config;
-
-inline void init_extract_config() {
-    extract_config.verbose = true;
-    extract_config.extract_dir = "out";
-}
 void init_extract_ctx(extract_ctx *ctx);
 int process_directory(ext2_ino_t dir_ino, void *ctx);
 uint32_t count_files_recursive(ext2_filsys fs, ext2_ino_t dir_ino, CountContext* ctx = nullptr);
@@ -98,7 +92,7 @@ int extract_file_contexts();
 
 EXTRACT_FUNC(regular_file);
 EXTRACT_FUNC(directory);
-int extract_link(const std::string path, const std::string link_target);
+int extract_link(std::string path, std::string link_target);
 
 #define IS_DOT(name, len) (len == 1 && (name)[0] == '.')
 #define IS_DOTDOT(name, len) (len == 2 && (name)[0] == '.' && (name)[1] == '.')

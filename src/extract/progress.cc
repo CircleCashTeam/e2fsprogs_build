@@ -5,7 +5,7 @@
 // This is avoid slow print on windows console
 void progress_plus()
 {
-    const int32_t percent = (++extract_config.processed_files * 100) / extract_config.total_files;
+    int32_t percent = (++extract_config.processed_files * 100) / extract_config.total_files;
     if (percent > extract_config.last_percent)
     {
         std::cout << fmt::format("[{:3d}%] Processing ...", percent).c_str() << "\n" << std::flush;

@@ -8,7 +8,7 @@
 
 namespace fs = std::filesystem;
 
-static inline fs::path ensure_parent_dir(const std::string file_path)
+static inline fs::path ensure_parent_dir(const std::string& file_path)
 {
     fs::path full_path = fs::absolute(extract_config.outdir);
     std::string file = file_path;
