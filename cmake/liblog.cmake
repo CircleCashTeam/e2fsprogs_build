@@ -24,12 +24,10 @@ set(liblog_target_sources
 )
 
 if(NOT WIN32)
-    # Maybe unused
-    #list(APPEND liblog_src "${liblog_src_dir}/event_tag_map.cpp")
+    list(APPEND liblog_src "${liblog_src_dir}/event_tag_map.cpp")
 endif()
 
-add_library(${target_name} ${liblog_src})
-
+add_library(${target_name} STATIC ${liblog_src})
 target_compile_options(${target_name} PRIVATE
     "-Wall"
     "-Wextra"
@@ -39,11 +37,15 @@ target_compile_options(${target_name} PRIVATE
     "-DANDROID_DEBUGGABLE=0"
 )
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${target_name} PRIVATE
         "-UANDROID_DEBUGGABLE"
         "-DANDROID_DEBUGGABLE=1"
     )
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(${target_name} PRIVATE "-Wl,--dynamic-list=${liblog_src_dir}/liblog.map.txt")
 endif()
 
 target_include_directories(${target_name} PRIVATE
@@ -51,9 +53,4 @@ target_include_directories(${target_name} PRIVATE
     ${libcutils_headers}
     ${liblog_headers}
     ${libutils_headers}
-)
-
-target_compile_options(
-    ${target_name} PRIVATE
-    "-Wno-error=c99-designator"
 )

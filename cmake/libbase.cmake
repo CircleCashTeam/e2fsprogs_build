@@ -36,11 +36,11 @@ set(libbase_src
     "${libbase_src_dir}/test_utils.cpp"
 )
 
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND libbase_src "${libbase_src_dir}/errors_unix.cpp")
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     list(APPEND libbase_src "${libbase_src_dir}/errors_unix.cpp")
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND libbase_src
         "${libbase_src_dir}/errors_windows.cpp"
         "${libbase_src_dir}/utf8.cpp"

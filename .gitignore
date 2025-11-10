@@ -1,6 +1,7 @@
-/build*/**
 /llvm*
 /llvm*/**
 /.vscode/**
 /.idea/**
+/build*/**
+/cmake-build*/**
 /*.img

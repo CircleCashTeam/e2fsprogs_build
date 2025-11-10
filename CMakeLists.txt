@@ -10,22 +10,47 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    # Android libs requried libc++
-    if(NOT WIN32)
-        link_libraries(stdc++)
-    else()
-        link_libraries(c++)
-    endif()
+    message("This use Clang build")
 
+    # set clang policy
     set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
-
     # enable
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-
     # use lld
-    add_link_options(-fuse-ld=lld)
-else()
-    link_libraries(stdc++)
+    add_link_options("-fuse-ld=lld")
+
+    # Android libs requried libc++ c++abi
+    find_library(libcxx NAMES "libc++.a" "libc++.so" "libc++.dll" "libc++.lib")
+    find_library(libcxxabi NAMES "libc++abi.a" "libc++abi.so" "libc++abi.dll" "libc++abi.lib")
+    find_library(libstdcxx NAMES "libstdc++.a" "libstdc++.so" "libstdc++.dll" "libstdc++.lib")
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        if(libcxx)
+            message("find libc++")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libc++")
+        endif()
+        if(libcxxabi)
+            message("find libc++abi")
+            link_libraries(c++abi)
+        endif()
+        if(libstdcxx AND NOT libcxx)
+            message("find libstdc++ not find libc++")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libstdc++")
+        endif()
+        if(NOT libstdcxx AND NOT libcxx)
+            message("libstdc++ libc++ not find")
+        endif()
+    endif()
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GCC")
+    message("This use GCC build")
+
+    find_library(libstdcxx NAMES "libstdc++.a" "libstdc++.so" "libstdc++.dll" "libstdc++.lib")
+    if(libstdcxx)
+        message("find libstdc++")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libstdc++")
+    endif()
+         message("not find libstdc++")
 endif()
 
 # Lib with cmake can direct import

@@ -10,6 +10,7 @@
 #include <cstring>
 #include <cstdint>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <vector>
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_err.h>
