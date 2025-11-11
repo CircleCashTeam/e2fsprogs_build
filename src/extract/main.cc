@@ -1,12 +1,36 @@
-#include "extract.h"
-#include <chrono>
 #include <filesystem>
 #include <fmt/format.h>
+#include <cstring>
+#include "extract.h"
+#include "version.h"
 
 using namespace std;
 namespace fs = std::filesystem;
 
 extract_config_t extract_config;
+
+void print_version(const char* p)
+{
+    auto current_time = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::to_time_t(current_time);
+    auto local_time = std::localtime(&now);
+    int32_t year = local_time->tm_year + 1900;
+    int32_t month = local_time->tm_mon + 1;
+    int32_t day = local_time->tm_mday;
+
+     string date = fmt::format("{}-{}-{}", year, month, day);
+     string version = fmt::format("{} version: {}.{} ({})", fs::path(p).filename().string(), VERSION, PATCHLEVEL, date);
+     cout << version << endl;
+     exit(0);
+}
+
+void print_usage(const char* p)
+{
+    string s = "";
+    s += fmt::format("{} <image> [<outdir>]", fs::path(p).filename().string());
+    cout << s << endl;
+    exit(0);
+}
 
 int main(int argc, char **argv)
 {
@@ -16,10 +40,13 @@ int main(int argc, char **argv)
     errcode_t retval_csum = 0;
     extract_ctx ctx;
 
-    if (argc < 2)
+    if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     {
-        cerr << "Error: Need to specific system image path." << endl;
-        return -1;
+        print_usage(argv[0]);
+    }
+    if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version"))
+    {
+        print_version(argv[0]);
     }
     if (argc == 2)
     {

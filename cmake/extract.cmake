@@ -2,6 +2,11 @@ set(target_name "e2fsextract")
 
 set(target_dir "${CMAKE_SOURCE_DIR}/src/extract")
 
+# program version
+set(VERSION 1)
+set(PATCHLEVEL 0)
+configure_file("${target_dir}/version.h.in" "${target_dir}/version.h" )
+
 set(target_srcs
         "${target_dir}/main.cc"
         "${target_dir}/process.cc"
