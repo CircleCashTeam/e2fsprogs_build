@@ -93,6 +93,9 @@ include("${CMAKE_SOURCE_DIR}/cmake/libcutils.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/pcre.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libsepol.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libselinux.cmake")
+if(WIN32)
+    include("${CMAKE_SOURCE_DIR}/cmake/mman-win32.cmake")
+endif()
 
 option(PREFER_STATIC_LINKING "Link static" OFF)
 

@@ -34,3 +34,6 @@
 	path = src/libbase
 	url = https://android.googlesource.com/platform/system/libbase
 	branch = main
+[submodule "src/mman-win32"]
+	path = src/mman-win32
+	url = https://github.com/boldowa/mman-win32

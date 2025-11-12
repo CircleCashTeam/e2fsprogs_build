@@ -131,7 +131,6 @@ static int process_file(
     errcode_t ret = 0;
     extract_ctx *ctx = (extract_ctx *)priv_data;
     struct ext2_inode inode;
-    extract_config_t extract_config;
     char *name = nullptr;
 
     ret = ext2fs_read_inode(ctx->fs, dirent->inode, &inode);

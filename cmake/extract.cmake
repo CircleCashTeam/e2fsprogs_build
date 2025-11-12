@@ -31,3 +31,8 @@ target_link_libraries(${target_name} PRIVATE
         base
         zlibstatic
 )
+if(WIN32) # mmap support for windows
+        target_link_libraries(${target_name} PRIVATE
+                mman-win32
+        )
+endif()

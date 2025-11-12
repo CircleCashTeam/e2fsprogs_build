@@ -1,14 +1,29 @@
 #include "extract.h"
 #include <fstream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/fcntl.h>
 #include <filesystem>
 #include <unistd.h>
 #include <fmt/format.h>
 #include <vector>
 #include "symlink.h"
 
+#ifdef _WIN32
+#include "mman.h"
+#else
+#include <sys/mman.h>
+#ifndef _O_BINARY
+#define _O_BINARY 0
+#endif
+#ifndef O_BINARY
+#define O_BINARY _O_BINARY
+#endif
+#endif
+
 namespace fs = std::filesystem;
 
-static inline fs::path ensure_parent_dir(const std::string& file_path)
+static inline fs::path ensure_parent_dir(const std::string &file_path)
 {
     fs::path full_path = fs::absolute(extract_config.outdir);
     std::string file = file_path;
@@ -28,7 +43,7 @@ static inline fs::path ensure_parent_dir(const std::string& file_path)
         }
     }
 
-    return full_path;
+    return full_path.make_preferred();
 }
 
 #ifdef _WIN32
@@ -95,12 +110,17 @@ int xsymlink(const std::string link_target, const std::string path)
 #ifdef _WIN32
     std::ofstream file(full_path, std::ios::out | std::ios::binary);
 
-    auto utf16_target = stringToUtf16Le(link_target);
-    file << "!<symlink>"; // cygwin old symlink symbol
-    file.write(reinterpret_cast<const char *>(utf16_target.data()),
-               utf16_target.size());
-    file.flush();
-    file.close();
+    auto fd = _open(full_path.string().c_str(), _O_BINARY | _O_TRUNC | _O_WRONLY | _O_CREAT, 0644);
+    if (fd < 0)
+        return -1;
+
+    auto utf16le_buf = stringToUtf16Le(link_target);
+
+    _write(fd, cygwin_symlink_magic, sizeof(cygwin_symlink_magic));
+    _write(fd, utf16le_buf.data(), utf16le_buf.size());
+
+    if (fd > 0)
+        _close(fd);
 
     if (!setSystemAttribute(full_path.wstring()))
         std::cerr << "Error: Could not set system attrib on file:" << full_path << std::endl;
@@ -116,7 +136,7 @@ int xsymlink(const std::string link_target, const std::string path)
     fs::create_symlink(link_target, full_path);
 #endif
 
-    return 0;
+    return 0; // always
 }
 
 void init_extract_ctx(extract_ctx *ctx)
@@ -133,6 +153,10 @@ EXTRACT_FUNC(regular_file)
     errcode_t err = 0;
     ext2_file_t file;
     char *buf = nullptr;
+    ext2_off_t pos = 0;
+    uint32_t read_size;
+    int fd = -1;
+    char *mp = static_cast<char *>(MAP_FAILED);
 
     err = ext2fs_file_open(ctx->fs, ino, 0, &file);
     if (err)
@@ -141,47 +165,82 @@ EXTRACT_FUNC(regular_file)
         return 1;
     }
 
-    buf = (char *)malloc(ctx->fs->blocksize);
-    if (!buf)
-    {
-        std::cerr << "Error: could not alloc mem" << std::endl;
-        ext2fs_file_close(file);
-        return 1;
-    }
-
-    std::ofstream outfile(full_path, std::ios::out | std::ios::binary);
-    if (!outfile)
-    {
-        ext2fs_file_close(file);
-        return -1;
-    }
-
     const auto fsize = ext2fs_file_get_size(file);
-    ext2_off_t pos = 0;
-    uint32_t read_size;
 
-    do
+    if (fsize == 0)
     {
-        err = ext2fs_file_read(file, buf, ctx->fs->blocksize, &read_size);
+        auto fd = _open(full_path.string().c_str(), _O_CREAT | O_BINARY | _O_TRUNC | _O_WRONLY, 0644);
+        if (fd > 0)
+            close(fd);
+        else
+            std::cerr << "Error: Could not create empty file" << std::endl;
+        return 0;
+    }
+
+    fd = _open(full_path.string().c_str(),
+               _O_BINARY | _O_CREAT | _O_RDWR | _O_TRUNC,
+               0644);
+    if (fd < 0)
+    {
+        std::cerr << "Error: Could not open file:" << full_path.string() << std::endl;
+        goto extract_file_out;
+    }
+    _chsize(fd, fsize);
+
+    if (fsize < EXTRACT_DIRECT_FILE_LIMIT)
+    { // direct extract small file
+extract_file_direct:
+        buf = (char *)malloc(fsize);
+        if (!buf)
+        {
+            std::cerr << "Error: Could not alloc memory" << std::endl;
+            goto extract_file_out;
+        }
+        err = ext2fs_file_read(file, buf, fsize, &read_size);
         if (err && err != EXT2_ET_SHORT_READ)
         {
             com_err("ext2fs_file_read", err, NULL);
-            break;
+            goto extract_file_out;
+        }
+        _write(fd, buf, fsize);
+    }
+    else
+    {
+        mp = (char *)mmap(nullptr, fsize, PROT_WRITE, MAP_SHARED, fd, 0);
+        if (mp == MAP_FAILED)
+        {
+            std::cerr << "Error: Map file failed." << std::endl;
+            goto extract_file_direct; // if failed mmap file use regular way to extract
         }
 
-        if (read_size > 0)
+        do
         {
-            outfile.write(buf, read_size);
-            pos += read_size;
-        }
-        else
-        {
-            break;
-        }
-    } while (pos < fsize);
+            err = ext2fs_file_read(file, mp + pos, ctx->fs->blocksize << 2, &read_size);
+            if (err && err != EXT2_ET_SHORT_READ)
+            {
+                com_err("ext2fs_file_read", err, NULL);
+                break;
+            }
 
+            if (read_size > 0)
+            {
+                // memcpy(mp, buf, read_size);
+                pos += read_size;
+            }
+            else
+            {
+                break;
+            }
+        } while (pos < fsize);
+    }
+
+extract_file_out:
     if (buf)
         free(buf);
+    if (mp != MAP_FAILED)
+        munmap(mp, fsize);
+    if (fd > 0)
+        _close(fd);
     err = ext2fs_file_close(file);
     if (err)
     {
@@ -227,7 +286,7 @@ std::string escape_replace(const std::string &input)
     std::string result;
     for (char c : input)
     {
-        if (std::find(specialChars.begin(), specialChars.end(),c) != specialChars.end())
+        if (std::find(specialChars.begin(), specialChars.end(), c) != specialChars.end())
         {
             result += "\\";
         }
