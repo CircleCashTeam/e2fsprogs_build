@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <vector>
+#include "config.h"
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_err.h>
 #include <ext2fs/ext2_io.h>

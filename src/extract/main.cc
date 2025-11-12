@@ -1,6 +1,10 @@
 #include <filesystem>
 #include <fmt/format.h>
 #include <cstring>
+#include "config.h"
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
 #include "extract.h"
 #include "version.h"
 
@@ -17,10 +21,16 @@ void print_version(const char* p)
     int32_t year = local_time->tm_year + 1900;
     int32_t month = local_time->tm_mon + 1;
     int32_t day = local_time->tm_mday;
+    const char *e2fs_ver = nullptr, *e2fs_date = nullptr;
+
+    ext2fs_get_library_version(&e2fs_ver, &e2fs_date);
 
      string date = fmt::format("{}-{}-{}", year, month, day);
      string version = fmt::format("{} version: {}.{} ({})", fs::path(p).filename().string(), VERSION, PATCHLEVEL, date);
      cout << version << endl;
+     cout << "\te2fsprogs version: " << e2fs_ver << endl
+          << "\te2fsprogs date: " << e2fs_date << endl;
+     cout << "\tUsing " << error_message(EXT2_ET_BASE) << endl;
      exit(0);
 }
 
@@ -39,6 +49,8 @@ int main(int argc, char **argv)
     errcode_t ret = 0;
     errcode_t retval_csum = 0;
     extract_ctx ctx;
+
+    initialize_ext2_error_table();
 
     if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     {
@@ -61,7 +73,6 @@ int main(int argc, char **argv)
 
     auto start_time = std::chrono::system_clock::now();
     init_extract_ctx(&ctx);
-    initialize_ext2_error_table();
     int flags = EXT2_FLAG_SOFTSUPP_FEATURES |
                 EXT2_FLAG_64BITS | EXT2_FLAG_THREADS |
                 EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS |
