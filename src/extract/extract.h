@@ -114,7 +114,6 @@ int extract_link(std::string path, std::string link_target);
 
 #ifdef _WIN32
 #define _mkdir(x, y) mkdir(x)
-#define unix_io_manager windows_io_manager
 #else
 #define _mkdir(x, y) mkdir(x, y)
 #endif

@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 
     auto start_time = std::chrono::system_clock::now();
     init_extract_ctx(&ctx);
-    int flags = EXT2_FLAG_SOFTSUPP_FEATURES |
+    int flags = EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_SKIP_MMP |
                 EXT2_FLAG_64BITS | EXT2_FLAG_THREADS |
                 EXT2_FLAG_EXCLUSIVE | EXT2_FLAG_THREADS |
                 EXT2_FLAG_PRINT_PROGRESS | EXT2_FLAG_FORCE;
@@ -84,7 +84,7 @@ try_open_again:
         flags,
         0,
         0,
-        unix_io_manager,
+        default_io_manager,
         &ctx.fs);
 
     flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
