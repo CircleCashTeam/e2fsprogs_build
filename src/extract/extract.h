@@ -108,7 +108,7 @@ int extract_link(std::string path, std::string link_target);
 #ifndef _WIN32
 #define PATH_MAX 4095
 #else
-#define PATH_MAX 255
+#define PATH_MAX MAX_PATH
 #endif
 #endif
 
