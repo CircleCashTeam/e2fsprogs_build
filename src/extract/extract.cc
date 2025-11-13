@@ -1,24 +1,23 @@
 #include "extract.h"
 #include <fstream>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/fcntl.h>
 #include <filesystem>
-#include <unistd.h>
 #include <fmt/format.h>
+#include <sys/fcntl.h>
 #include <vector>
 #include "symlink.h"
 
-#ifdef _WIN32
-#include "mman.h"
-#else
-#include <sys/mman.h>
-#ifndef _O_BINARY
-#define _O_BINARY 0
-#endif
-#ifndef O_BINARY
-#define O_BINARY _O_BINARY
-#endif
+#ifndef _WIN32
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#define _open open
+#define _close close
+#define _write write
+#define _O_BINARY 0x800
+#define _O_CREAT O_CREAT
+#define _O_TRUNC O_TRUNC
+#define _O_WRONLY O_WRONLY
+#define _O_RDWR O_RDWR
 #endif
 
 namespace fs = std::filesystem;
@@ -169,7 +168,7 @@ EXTRACT_FUNC(regular_file)
 
     if (fsize == 0)
     {
-        auto fd = _open(full_path.string().c_str(), _O_CREAT | O_BINARY | _O_TRUNC | _O_WRONLY, 0644);
+        auto fd = _open(full_path.string().c_str(), _O_CREAT | _O_BINARY | _O_TRUNC | _O_WRONLY, 0644);
         if (fd > 0)
             close(fd);
         else
@@ -185,7 +184,11 @@ EXTRACT_FUNC(regular_file)
         std::cerr << "Error: Could not open file:" << full_path.string() << std::endl;
         goto extract_file_out;
     }
+    #ifdef _WIN32
     _chsize(fd, fsize);
+    #else
+    ftruncate(fd, fsize);
+    #endif
 
     if (fsize < EXTRACT_DIRECT_FILE_LIMIT)
     { // direct extract small file

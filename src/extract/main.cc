@@ -1,10 +1,7 @@
 #include <filesystem>
 #include <fmt/format.h>
 #include <cstring>
-#include "config.h"
-#ifdef HAVE_SYS_IOCTL_H
-#include <sys/ioctl.h>
-#endif
+#include <config.h>
 #include "extract.h"
 #include "version.h"
 
@@ -21,8 +18,9 @@ void print_version(const char* p)
     int32_t year = local_time->tm_year + 1900;
     int32_t month = local_time->tm_mon + 1;
     int32_t day = local_time->tm_mday;
-    const char *e2fs_ver = nullptr, *e2fs_date = nullptr;
 
+    const char *e2fs_ver;
+    const char *e2fs_date;
     ext2fs_get_library_version(&e2fs_ver, &e2fs_date);
 
      string date = fmt::format("{}-{}-{}", year, month, day);

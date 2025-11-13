@@ -9,21 +9,22 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <vector>
-#include "config.h"
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_err.h>
 #include <ext2fs/ext2_io.h>
 
 #ifdef _WIN32
+#include <windows.h>
+#include <mman.h>
 typedef uint32_t uid_t;
 typedef uint32_t gid_t;
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#else
+#include <sys/mman.h>
 #endif
 
 typedef struct
