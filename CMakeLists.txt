@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 
 project(e2fsprogs_build LANGUAGES C CXX)
 
@@ -53,20 +53,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GCC")
          message("not find libstdc++")
 endif()
 
-# Lib with cmake can direct import
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/fmtlib")
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/zlib")
 
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
-set(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/jsoncpp")
-
-set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/googletest")
-
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/boringssl")
-#add_subdirectory("${CMAKE_SOURCE_DIR}/src/pcre")
+if (WIN32)
+    set(exe ".exe"  CACHE STRING "" FORCE)
+else()
+    set(exe ""  CACHE STRING "" FORCE)
+endif()
 
 # Headers
 include("${CMAKE_SOURCE_DIR}/cmake/include.cmake")
@@ -85,11 +77,14 @@ include("${CMAKE_SOURCE_DIR}/cmake/libext2_ss.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libext2_support.cmake")
 
 # Libraries
+include("${CMAKE_SOURCE_DIR}/cmake/fmtlib.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/zlib.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/liblog.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libbase.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/libcutils.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/libcrypto.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libsparse.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libprocessgroup.cmake")
-include("${CMAKE_SOURCE_DIR}/cmake/libcutils.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/pcre.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libsepol.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libselinux.cmake")
@@ -117,7 +112,8 @@ if(WIN32)
 endif()
 
 # Binaries
-include("${CMAKE_SOURCE_DIR}/cmake/misc.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/mke2fs.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/tune2fs.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/e2fsck.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/debugfs.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/resize2fs.cmake")

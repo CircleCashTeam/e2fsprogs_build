@@ -5,8 +5,7 @@ set(target_srcs "${target_dir}/mman.c")
 
 add_library(${target_name} ${target_srcs})
 target_compile_options(${target_name} PRIVATE
-    "-Wall" "-Wpedantic"
+        "-Wall"
+        "-Wpedantic"
 )
-target_include_directories(${target_name} PUBLIC
-    "${target_dir}"
-)
+target_include_directories(${target_name} PRIVATE "${target_dir}")

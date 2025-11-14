@@ -15,7 +15,6 @@ set(liblog_src
 )
 
 set(liblog_target_sources
-    "${liblog_src_dir}/event_tag_map.cpp"
     "${liblog_src_dir}/log_time.cpp"
     "${liblog_src_dir}/pmsg_reader.cpp"
     "${liblog_src_dir}/pmsg_writer.cpp"
@@ -45,7 +44,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(${target_name} PRIVATE "-Wl,--dynamic-list=${liblog_src_dir}/liblog.map.txt")
+    target_link_options(${target_name} PRIVATE "-Wl,--dynamic-list=${liblog_src_dir}/liblog.map.txt")
 endif()
 
 target_include_directories(${target_name} PRIVATE
@@ -53,4 +52,5 @@ target_include_directories(${target_name} PRIVATE
     ${libcutils_headers}
     ${liblog_headers}
     ${libutils_headers}
+    ${core_headers}
 )

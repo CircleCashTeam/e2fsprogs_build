@@ -56,21 +56,41 @@ fi
 
 function build() {
     local cmake_gen_args=
+    local targets=
+
     if grep -qo "debian" /etc/os-release; then
         cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DCMAKE_SYSTEM_NAME=Linux -DPREFER_STATIC_LINKING=ON"
+        targets="mke2fs;tune2fs;e2fsdroid;debugfs;resize2fs;e2fsck;e2fsextract"
     fi
 
     if uname -o | grep -qo "Msys"; then
         cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DCMAKE_SYSTEM_NAME=Windows -DPREFER_STATIC_LINKING=ON"
+        targets="mke2fs;e2fsextract"
     fi
+
 
     rm -rf "build"
     echo "cmake $cmake_gen_args -G Ninja"
-    cmake $cmake_gen_args -DCMAKE_BUILD_TYPE=Release -G Ninja -B build
-    cmake --build build --target="e2fsextract" -j$(nproc --all)
+    cmake $cmake_gen_args -DCMAKE_BUILD_TYPE="Release" -G "Ninja" -B "build"
+    cmake --build "build" --target="$targets" -j$(nproc --all)
+}
+
+function install() {
+    mkdir -p "build/bin" "build/lib"
+    cd "build"
+    [[ -e "mke2fs" ]] && cp "mke2fs" "bin"
+    [[ -e "tune2fs" ]] && cp "tune2fs" "bin"
+    [[ -e "e2fsdroid" ]] && cp "e2fsdroid" "bin"
+    [[ -e "debugfs" ]] && cp "debugfs" "bin"
+    [[ -e "resize2fs" ]] && cp "resize2fs" "bin"
+    [[ -e "e2fsck" ]] && cp "e2fsck" "bin"
+    [[ -e "e2fsextract" ]] && cp "e2fsextract" "bin"
+    cp *.a lib
+    cd $LOCALDIR
 }
 
 prepare
 set_toolchains
 [[ $cc == "gcc" && $cxx == "g++" ]] && check_gcc
 build
+install

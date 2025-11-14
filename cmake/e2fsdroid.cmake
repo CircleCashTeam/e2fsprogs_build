@@ -13,7 +13,7 @@ set(target_srcs
 )
 
 add_executable(${target_name} ${target_srcs})
-target_compile_options(${target_name} PUBLIC
+target_compile_options(${target_name} PRIVATE
     ${e2fsprogs_cflags}
     "-Wno-error=macro-redefined"
     "-Wno-error=sign-compare"
@@ -29,12 +29,13 @@ target_include_directories(${target_name} PRIVATE
     ${libcrypto_headers}
     ${liblog_headers}
 )
+
 target_link_libraries(${target_name} PRIVATE
     ext2_com_err
     ext2_misc
     ext2fs
     sparse
-    zlibstatic
+    zlib
     cutils
     base
     selinux

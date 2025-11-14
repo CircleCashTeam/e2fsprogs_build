@@ -29,16 +29,17 @@ set(target_srcs
 )
 
 add_executable(${target_name} ${target_srcs})
-target_compile_options(${target_name} PUBLIC
-    ${e2fsprogs_cflags} "-DDEBUGFS"
+target_compile_options(${target_name} PRIVATE
+    ${e2fsprogs_cflags}
+    "-DDEBUGFS"
 )
-target_include_directories(${target_name} PUBLIC
+target_include_directories(${target_name} PRIVATE
     ${e2fsprogs_includes}
     ${libext2_headers}
     ${target_dir}/../misc
     ${target_dir}/../e2fsck
 )
-target_link_libraries(${target_name} PUBLIC
+target_link_libraries(${target_name} PRIVATE
     ext2_misc
     ext2fs
     ext2_blkid

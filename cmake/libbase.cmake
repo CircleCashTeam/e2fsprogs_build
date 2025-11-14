@@ -49,6 +49,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 add_library(${target_name} STATIC ${libbase_src})
 target_compile_options(${target_name} PRIVATE ${libbase_cflags})
+target_link_libraries(fmtlib)
 target_include_directories(${target_name} PRIVATE
     ${fmtlib_headers}
     ${libbase_headers}

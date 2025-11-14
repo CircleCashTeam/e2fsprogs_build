@@ -18,6 +18,7 @@ add_executable(${target_name} ${target_srcs})
 target_compile_options(${target_name} PRIVATE ${e2fsprogs_cflags})
 target_include_directories(${target_name} PRIVATE
         "${e2fsprogs_includes}"
+        "${fmtlib_headers}"
         "${libext2_headers}"
         "${target_dir}"
         "${CMAKE_SOURCE_DIR}/src/e2fsprogs/e2fsck"
@@ -26,10 +27,9 @@ target_include_directories(${target_name} PRIVATE
 target_link_libraries(${target_name} PRIVATE
         ext2_com_err
         ext2fs
-        fmt
+        fmtlib
         sparse
         base
-        zlibstatic
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows") # mmap support for windows

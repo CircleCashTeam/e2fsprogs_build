@@ -3,7 +3,6 @@ set(target_name "pcre2")
 set(target_cflags
     "-DHAVE_CONFIG_H"
     "-Wall"
-    "-Werror"
     "-DPCRE2_CODE_UNIT_WIDTH=8"
 )
 

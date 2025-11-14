@@ -34,13 +34,12 @@ set(target_srcs
 )
 
 add_executable(${target_name} ${target_srcs})
-target_compile_options(${target_name} PRIVATE
-    ${e2fsprogs_cflags}
-)
+target_compile_options(${target_name} PRIVATE ${e2fsprogs_cflags})
 target_include_directories(${target_name} PRIVATE
     ${e2fsprogs_includes}
     ${libext2_headers}
 )
+
 target_link_libraries(${target_name} PRIVATE
     ext2fs
     ext2_blkid

@@ -9,7 +9,6 @@ set(target_cflags
     "-DNO_X_BACKEND"
     "-DNO_DB_BACKEND"
     "-Wall"
-    "-Werror"
     "-Wno-error=missing-noreturn"
     "-Wno-error=unused-function"
     "-Wno-error=unused-variable"
@@ -90,4 +89,7 @@ target_include_directories(${target_name} PRIVATE
     ${libselinux_headers}
     ${target_dir}/src
 )
-target_link_libraries(${target_name} PRIVATE pcre2)
+target_link_libraries(${target_name} PRIVATE 
+    pcre2
+    log
+)
