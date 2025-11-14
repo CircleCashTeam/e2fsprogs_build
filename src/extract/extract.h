@@ -1,30 +1,37 @@
 #ifndef __EXT2FS_EXTRACT_H
 #define __EXT2FS_EXTRACT_H
 
-#ifdef __MINGW32__
-#define __USE_MINGW_ANSI_STDIO 0
-#endif
-
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
-#include <sys/stat.h>
 #include <vector>
+#include <cerrno>
+#include <config.h>
 #include <ext2fs/ext2fs.h>
 #include <ext2fs/ext2_err.h>
 #include <ext2fs/ext2_io.h>
+#include <cstdio>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#ifdef __MINGW32__
+#define __USE_MINGW_ANSI_STDIO 0
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
 #include <mman.h>
-typedef uint32_t uid_t;
-typedef uint32_t gid_t;
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
+#include <io.h>
 #else
 #include <sys/mman.h>
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#else
+#include <sys/io.h>
+#endif
 #endif
 
 typedef struct
@@ -123,10 +130,6 @@ int extract_link(std::string path, std::string link_target);
 
 #define EXTRACT_XATTR_SELINUX_KEY "security.selinux"
 #define EXTRACT_XATTR_CAPABILITIES_KEY "security.capability"
-
-const char cygwin_symlink_magic[] = {
-    '!', '<', 's', 'y', 'm', 'l', 'i', 'n', 'k', '>',
-};
 #define EXTRACT_DIRECT_FILE_LIMIT (1u << 20) // 1MB
 
-#endif
+#endif //__EXT2FS_EXTRACT_H

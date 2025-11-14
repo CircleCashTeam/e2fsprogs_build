@@ -1,7 +1,6 @@
 #include <filesystem>
 #include <fmt/format.h>
 #include <cstring>
-#include <config.h>
 #include "extract.h"
 #include "version.h"
 

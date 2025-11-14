@@ -1,15 +1,12 @@
-#include "extract.h"
 #include <fstream>
 #include <filesystem>
 #include <fmt/format.h>
 #include <sys/fcntl.h>
 #include <vector>
+#include "extract.h"
 #include "symlink.h"
 
 #ifndef _WIN32
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #define _open open
 #define _close close
 #define _write write
