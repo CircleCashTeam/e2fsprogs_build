@@ -10,12 +10,7 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    message("This use Clang build")
-
-    # set clang policy
-    set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
-    # enable
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    message("use Clang build")
     # use lld
     add_link_options("-fuse-ld=lld")
 
@@ -25,39 +20,30 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     find_library(libstdcxx NAMES "libstdc++.a" "libstdc++.so" "libstdc++.dll" "libstdc++.lib")
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
         if(libcxx)
-            message("find libc++")
+            message("found libc++")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libc++")
+            link_libraries(c++)
         endif()
         if(libcxxabi)
-            message("find libc++abi")
+            message("found libc++abi")
             link_libraries(c++abi)
         endif()
         if(libstdcxx AND NOT libcxx)
-            message("find libstdc++ not find libc++")
+            message("found libstdc++ not found libc++")
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libstdc++")
+            link_libraries(stdc++)
         endif()
         if(NOT libstdcxx AND NOT libcxx)
-            message("libstdc++ libc++ not find")
+            message("libstdc++ libc++ not found")
+            message("This is use pure windows environment Always link libc++")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libc++")
+            link_libraries(c++)
         endif()
     endif()
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "GCC")
-    message("This use GCC build")
-
-    find_library(libstdcxx NAMES "libstdc++.a" "libstdc++.so" "libstdc++.dll" "libstdc++.lib")
-    if(libstdcxx)
-        message("find libstdc++")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libstdc++")
-    endif()
-         message("not find libstdc++")
-endif()
-
-
-if (WIN32)
-    set(exe ".exe"  CACHE STRING "" FORCE)
 else()
-    set(exe ""  CACHE STRING "" FORCE)
+    message("use GCC build")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --stdlib=libstdc++")
+    link_libraries(stdc++)
 endif()
 
 # Headers
@@ -98,16 +84,20 @@ if(PREFER_STATIC_LINKING)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -O3 -ffunction-sections -fdata-sections -fno-rtti -fno-exceptions"
-    )
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections -s")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options("-Os" "-flto")
+        add_link_options("-flto" "-Wl,--gc-sections" "-s")
+    endif()
+else()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options("-flto=thin")
+        add_link_options("-flto=thin")
+    endif()
 endif()
 
-if(WIN32) 
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE")
+# windows io need
+if(WIN32)
+    add_compile_definitions("_FILE_OFFSET_BITS=64" "_LARGEFILE_SOURCE")
 endif()
 
 # Binaries
