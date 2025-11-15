@@ -3,15 +3,52 @@ LOCALDIR=$(pwd)
 cc="clang"
 cxx="clang++"
 
-function prepare() {
+function check_gcc() {
+    if [[ $cc == "clang" || $cxx == "clang++" ]]; then
+        return
+    fi
+
+    if uname -o | grep -qo "Msys"; then
+        if [[ $MSYSTEM == "CLANG64" ]]; then
+           return
+        fi
+    fi
+
+    if ! command -v gcc; then
+        echo "not install gcc"
+        exit 1
+    fi
+
+    local current_gcc_version=$(gcc --version | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]' | head -n1)
+    local major_version=$(echo "$current_gcc_version" | cut -d"." -f1)
+    if (($major_version < 18 )); then
+        echo "build use gcc version min is 18.x.x! current version is $current_gcc_version"
+        exit 1
+    fi
+}
+
+function check_msys_clang64_environment() {
+    if uname -o | grep -qo "Msys"; then
+        if [[ $cc == "clang" && $cxx == "clang++" && $MSYSTEM != "CLANG64" ]]; then
+            echo "need to use Msys2 clang64 environment"
+            exit 1
+        fi
+    fi
+}
+
+function install_deps() {
     if grep -qo "debian" /etc/os-release; then
-        sudo apt install -y cmake gcc clang llvm libc++-dev libc++abi-dev git ninja-build lld nasm wget
+        sudo apt install -y cmake gcc clang build-essential binutils nasm llvm lld libc++-dev libc++abi-dev ninja-build git wget
     fi
 
     if uname -o | grep -qo "Msys"; then
         pacman -Sy --noconfirm
         pacman -S --needed --noconfirm pactoys git unzip wget
-        pacboy -S --needed --noconfirm {gcc,clang,llvm,libc++,cmake,ninja,lld,nasm}:p
+        if [[ $MSYSTEM == "CLANG64" ]]; then
+            pacboy -S --needed --noconfirm {clang,llvm,llvm-libs,libc++,lld,nasm,cmake,ninja}:p
+        else
+            pacboy -S --needed --noconfirm {gcc,llvm,llvm-libs,lld,nasm,cmake,ninja}:p
+        fi
     fi
 }
 
@@ -45,15 +82,6 @@ function set_toolchains() {
     fi
 }
 
-function check_gcc() {       
-    local current_gcc_version=$(gcc --version | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]' | head -n1)
-    local major_version=$(echo "$current_gcc_version" | cut -d"." -f1)
-    if (($major_version < 18 )); then
-        echo "build use gcc version min is 18.x.x! current version is $current_gcc_version"
-        exit 1
-fi
-}
-
 function build() {
     local cmake_gen_args=
     local targets=
@@ -68,7 +96,6 @@ function build() {
         targets="mke2fs;e2fsextract"
     fi
 
-
     rm -rf "build"
     echo "cmake $cmake_gen_args -G Ninja"
     cmake $cmake_gen_args -DCMAKE_BUILD_TYPE="Release" -G "Ninja" -B "build"
@@ -78,19 +105,25 @@ function build() {
 function install() {
     mkdir -p "build/bin" "build/lib"
     cd "build"
-    [[ -e "mke2fs" ]] && cp "mke2fs" "bin"
-    [[ -e "tune2fs" ]] && cp "tune2fs" "bin"
-    [[ -e "e2fsdroid" ]] && cp "e2fsdroid" "bin"
-    [[ -e "debugfs" ]] && cp "debugfs" "bin"
-    [[ -e "resize2fs" ]] && cp "resize2fs" "bin"
-    [[ -e "e2fsck" ]] && cp "e2fsck" "bin"
-    [[ -e "e2fsextract" ]] && cp "e2fsextract" "bin"
-    cp *.a lib
+    [[ -e "mke2fs" ]] && mv "mke2fs" "bin"
+    [[ -e "tune2fs" ]] && mv "tune2fs" "bin"
+    [[ -e "e2fsdroid" ]] && mv "e2fsdroid" "bin"
+    [[ -e "debugfs" ]] && mv "debugfs" "bin"
+    [[ -e "resize2fs" ]] && mv "resize2fs" "bin"
+    [[ -e "e2fsck" ]] && mv "e2fsck" "bin"
+    [[ -e "e2fsextract" ]] && mv "e2fsextract" "bin"
+    if ls | grep -qoE "*.a$"; then
+        mv *.a lib
+    fi
+    if ls | grep -qoE "*.so$"; then
+        mv *.so lib
+    fi
     cd $LOCALDIR
 }
 
-prepare
+install_deps
+check_msys_clang64_environment
+check_gcc
 set_toolchains
-[[ $cc == "gcc" && $cxx == "g++" ]] && check_gcc
 build
 install
