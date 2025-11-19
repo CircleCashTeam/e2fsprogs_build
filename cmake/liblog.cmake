@@ -22,12 +22,7 @@ set(liblog_target_sources
     "${liblog_src_dir}/logd_writer.cpp"
 )
 
-if(NOT WIN32)
-    list(APPEND liblog_src "${liblog_src_dir}/event_tag_map.cpp")
-endif()
-
-add_library(${target_name} STATIC ${liblog_src})
-target_compile_options(${target_name} PRIVATE
+set(log_flags
     "-Wall"
     "-Wextra"
     "-Wexit-time-destructors"
@@ -36,17 +31,34 @@ target_compile_options(${target_name} PRIVATE
     "-DANDROID_DEBUGGABLE=0"
 )
 
+include(CheckFunctionExists)
+check_function_exists(strlcpy HAVE_STRLCPY)
+if(HAVE_STRLCPY)
+    list(APPEND log_flags "-DHAVE_STRLCPY")
+endif()
+
+if(NOT WIN32)
+    list(APPEND liblog_src "${liblog_src_dir}/event_tag_map.cpp")
+endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${target_name} PRIVATE
+    list(APPEND log_flags
         "-UANDROID_DEBUGGABLE"
         "-DANDROID_DEBUGGABLE=1"
     )
 endif()
 
+#android target src
+option(LOGANDROIDTARGET "" OFF)
+
+if(LOGANDROIDTARGET)
+    list(APPEND liblog_src ${liblog_target_sources})
+endif()
+
+add_library(${target_name} STATIC ${liblog_src})
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_options(${target_name} PRIVATE "-Wl,--dynamic-list=${liblog_src_dir}/liblog.map.txt")
 endif()
-
+target_compile_options(${target_name} PRIVATE ${log_flags})
 target_include_directories(${target_name} PRIVATE
     ${libbase_headers}
     ${libcutils_headers}

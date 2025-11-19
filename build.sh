@@ -1,5 +1,6 @@
 #!/bin/bash
 LOCALDIR=$(pwd)
+
 cc="clang"
 cxx="clang++"
 
@@ -55,19 +56,19 @@ function install_deps() {
 
 function set_toolchains() {
     local windows_versioin="20251104"
-    local linux_version="20251104"
     local platform_version="msvcrt"
     local mingw_ubuntu_version="22.04"
+    local ndk_version="r29.3"
 
     if grep -qo "debian" /etc/os-release; then
-        if [[ ! -e "llvm-mingw-$linux_version-$platform_version-ubuntu-$mingw_ubuntu_version-x86_64.tar.xz" ]]; then
-            wget https://github.com/mstorsjo/llvm-mingw/releases/download/$linux_version/llvm-mingw-$linux_version-msvcrt-ubuntu-$mingw_ubuntu_version-x86_64.tar.xz
+        if [[ ! -e "ondk-$ndk_version-linux.tar.xz" ]]; then
+            wget https://github.com/topjohnwu/ondk/releases/download/$ndk_version/ondk-$ndk_version-linux.tar.xz
         fi
-        if [[ ! -e "llvm-mingw-$platform_version-x86_64_linux" ]]; then
-            tar -xf "llvm-mingw-$linux_version-$platform_version-ubuntu-$mingw_ubuntu_version-x86_64.tar.xz" -C "."
-            mv "llvm-mingw-$linux_version-$platform_version-ubuntu-$mingw_ubuntu_version-x86_64" "llvm-mingw-$platform_version-x86_64_linux"
+        if [[ ! -e "ndk" ]]; then
+            tar -xf "ondk-$ndk_version-linux.tar.xz" -C "."
+            mv "ondk-$ndk_version" "ndk"
         fi
-        export PATH="$LOCALDIR/llvm-mingw-$platform_version-x86_64_linux/bin:$PATH"
+        export PATH="$LOCALDIR/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
     fi
 
     if uname -o | grep -qo "Msys"; then
@@ -86,13 +87,16 @@ function build() {
     local cmake_gen_args=
     local targets=
 
-    if grep -qo "debian" /etc/os-release; then
-        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DCMAKE_SYSTEM_NAME=Linux -DPREFER_STATIC_LINKING=ON"
+    if [[ $1 == "android" ]]; then
+        cc="aarch64-linux-android$2-$cc"
+        cxx="aarch64-linux-android$2-$cxx"
+        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON -DLOGANDROIDTARGET=ON"
         targets="mke2fs;tune2fs;e2fsdroid;debugfs;resize2fs;e2fsck;e2fsextract"
-    fi
-
-    if uname -o | grep -qo "Msys"; then
-        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DCMAKE_SYSTEM_NAME=Windows -DPREFER_STATIC_LINKING=ON"
+    elif [[ $(uname) == "Linux" ]]; then
+        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON -DLOGANDROIDTARGET=OFF"
+        targets="mke2fs;tune2fs;e2fsdroid;debugfs;resize2fs;e2fsck;e2fsextract"
+    elif [[ $(uname -o) == "Msys" ]]; then
+        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON -DLOGANDROIDTARGET=OFF"
         targets="mke2fs;e2fsextract"
     fi
 
@@ -125,5 +129,6 @@ install_deps
 check_msys_clang64_environment
 check_gcc
 set_toolchains
-build
+# if you need to compile for aarch64, please use "build android 30"
+build $@
 install

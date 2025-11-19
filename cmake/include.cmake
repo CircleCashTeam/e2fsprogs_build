@@ -8,7 +8,8 @@ set(libcutils_headers "${CMAKE_SOURCE_DIR}/src/core/libcutils/include" CACHE STR
 set(libutils_headers "${CMAKE_SOURCE_DIR}/src/core/libutils/include" CACHE STRING "" FORCE)
 set(libselinux_headers "${CMAKE_SOURCE_DIR}/src/selinux/libselinux/include" CACHE STRING "" FORCE)
 set(liblog_headers 
-    "${CMAKE_SOURCE_DIR}/src/logging/liblog/include" 
+    "${CMAKE_SOURCE_DIR}/src/logging/liblog/log"
+    "${CMAKE_SOURCE_DIR}/src/logging/liblog/include"
     "${CMAKE_SOURCE_DIR}/src/logging/liblog/include_vndk"
 CACHE STRING "" FORCE)
 set(libsepol_headers

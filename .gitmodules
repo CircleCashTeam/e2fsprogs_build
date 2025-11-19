@@ -18,10 +18,6 @@
 	path = src/pcre
 	url = https://android.googlesource.com/platform/external/pcre
 	branch = android-16.0.0_r2
-[submodule "src/logging"]
-	path = src/logging
-	url = https://android.googlesource.com/platform/system/logging
-	branch = android-16.0.0_r2
 [submodule "src/libbase"]
 	path = src/libbase
 	url = https://android.googlesource.com/platform/system/libbase

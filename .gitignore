@@ -1,8 +1,10 @@
-/llvm*
 /llvm*/**
+/*ndk/**
 /.vscode/**
 /.idea/**
 /build*/**
 /cmake-build*/**
-/*.img
+*.img
+*.tar.xz
+*.zip
 /src/extract/version.h

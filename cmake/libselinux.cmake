@@ -17,12 +17,17 @@ set(target_cflags
     # 1003 corresponds to auditd, from system/core/logd/event.logtags
     "-DAUDITD_LOG_TAG=1003"
 )
+list(APPEND target_cflags "-DBUILD_HOST")
+list(APPEND target_srcs "src/android/android_device.c")
 
-if(NOT (CMAKE_SYSTEM_NAME STREQUAL "Android"))
-    list(APPEND target_cflags "-DBUILD_HOST")
-else() # FIXME: Limit support without libpackagelistparser
-    list(APPEND target_cflags "-DHAVE_STRLCPY" "-DHAVE_REALLOCARRAY")
-    list(APPEND target_srcs "src/android/android_device.c")
+include(CheckFunctionExists)
+check_function_exists(reallocarray HAVE_REALLOCARRAY)
+check_function_exists(strlcpy HAVE_STRLCPY)
+if(HAVE_REALLOCARRAY)
+    list(APPEND target_cflags "-DHAVE_REALLOCARRAY")
+endif()
+if(HAVE_STRLCPY)
+    list(APPEND target_cflags "-DHAVE_STRLCPY")
 endif()
 
 set(target_dir
