@@ -107,22 +107,7 @@ function build() {
 }
 
 function install() {
-    mkdir -p "build/bin" "build/lib"
-    cd "build"
-    [[ -e "mke2fs" ]] && mv "mke2fs" "bin"
-    [[ -e "tune2fs" ]] && mv "tune2fs" "bin"
-    [[ -e "e2fsdroid" ]] && mv "e2fsdroid" "bin"
-    [[ -e "debugfs" ]] && mv "debugfs" "bin"
-    [[ -e "resize2fs" ]] && mv "resize2fs" "bin"
-    [[ -e "e2fsck" ]] && mv "e2fsck" "bin"
-    [[ -e "e2fsextract" ]] && mv "e2fsextract" "bin"
-    if ls | grep -qoE "*.a$"; then
-        mv *.a lib
-    fi
-    if ls | grep -qoE "*.so$"; then
-        mv *.so lib
-    fi
-    cd $LOCALDIR
+    cmake --install "build" --prefix "build"
 }
 
 install_deps

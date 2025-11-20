@@ -108,3 +108,10 @@ include("${CMAKE_SOURCE_DIR}/cmake/debugfs.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/resize2fs.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/e2fsdroid.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/extract.cmake")
+
+# innstall
+if(NOT WIN32)
+    install(TARGETS mke2fs tune2fs e2fsck debugfs resize2fs e2fsdroid e2fsextract)
+else()
+    install(TARGETS mke2fs e2fsextract)
+endif()
