@@ -3,6 +3,15 @@ set(target_name "cutils")
 set(libcutils_dir "${CMAKE_SOURCE_DIR}/src/core/libcutils")
 set(android_filesystem_config_header "${libcutils_dir}include/private/android_filesystem_config.h")
 
+set(common_libs
+    base
+    log
+)
+
+if(WIN32)
+   list(APPEND common_libs ws2_32)
+endif()
+
 set(libcutils_flags
     "-Wno-exit-time-destructors"
 )
@@ -10,7 +19,6 @@ set(libcutils_flags
 set(libcutils_sockets_srcs
     "${libcutils_dir}/sockets.cpp"
 )
-set(libcutils_sockets_flags ${libcutils_flags})
 
 if(NOT WIN32)
     if(CMAKE_SYSTEM_NAME STREQUAL "Android")
@@ -45,15 +53,15 @@ add_library(cutils_sockets
 )
 target_include_directories(cutils_sockets PUBLIC
     ${libcutils_headers}
+    ${libbase_headers}
     ${liblog_headers}
 )
 target_compile_options(cutils_sockets PUBLIC
-    ${libcutils_sockets_flags}
+   ${libcutils_flags}
 )
-
-if(WIN32)
-    target_link_libraries(cutils_sockets PUBLIC ws2_32)
-endif()
+target_link_directories(cutils_sockets PUBLIC
+    ${common_libs}
+)
 
 set(libcutils_srcs
     "${libcutils_dir}/config_utils.cpp"
@@ -65,12 +73,10 @@ set(libcutils_srcs
     "${libcutils_dir}/strlcpy.c"
 )
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    list(APPEND libcutils_srcs
-        "${libcutils_dir}/canned_fs_config.cpp"
-        "${libcutils_dir}/fs_config.cpp"
-    )
-endif()
+list(APPEND libcutils_srcs
+    "${libcutils_dir}/canned_fs_config.cpp"
+    "${libcutils_dir}/fs_config.cpp"
+)
 
 if(0) # Maybe unused
 # HOST
@@ -105,7 +111,11 @@ add_library(${target_name} STATIC ${libcutils_srcs})
 target_link_libraries(${target_name} cutils_sockets)
 target_compile_options(${target_name} PRIVATE ${libcutils_flags})
 target_include_directories(${target_name} PRIVATE
-    ${libprocessgroup_headers}
     ${libcutils_headers}
     ${libbase_headers}
+    ${liblog_headers}
+)
+target_link_directories(${target_name} PUBLIC
+    cutils_sockets
+    ${common_libs}
 )

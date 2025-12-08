@@ -49,7 +49,7 @@ endif()
 add_library(${target_name} STATIC ${libz_srcs})
 
  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-     target_link_options(${target_name} PRIVATE "-Wl,--dynamic-list=${liblog_src_dir}/libz.map.txt")
+     target_link_options(${target_name} PRIVATE "-Wl,--dynamic-list=${libz_srcs_dir}/libz.map.txt")
  endif()
 
 target_compile_options(${target_name} PRIVATE ${zlib_cflags})

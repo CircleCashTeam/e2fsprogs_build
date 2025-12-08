@@ -58,15 +58,15 @@ function set_toolchains() {
     local windows_versioin="20251104"
     local platform_version="msvcrt"
     local mingw_ubuntu_version="22.04"
-    local ndk_version="r29.3"
+    local ondk_version="r29.3"
 
     if grep -qo "debian" /etc/os-release; then
-        if [[ ! -e "ondk-$ndk_version-linux.tar.xz" ]]; then
-            wget https://github.com/topjohnwu/ondk/releases/download/$ndk_version/ondk-$ndk_version-linux.tar.xz
+        if [[ ! -e "ondk-$ondk_version-linux.tar.xz" ]]; then
+            wget https://github.com/topjohnwu/ondk/releases/download/$ondk_version/ondk-$ondk_version-linux.tar.xz
         fi
         if [[ ! -e "ndk" ]]; then
-            tar -xf "ondk-$ndk_version-linux.tar.xz" -C "."
-            mv "ondk-$ndk_version" "ndk"
+            tar -xf "ondk-$ondk_version-linux.tar.xz" -C "."
+            mv "ondk-$ondk_version" "ndk"
         fi
         export PATH="$LOCALDIR/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
     fi
@@ -88,15 +88,19 @@ function build() {
     local targets=
 
     if [[ $1 == "android" ]]; then
-        cc="aarch64-linux-android$2-$cc"
-        cxx="aarch64-linux-android$2-$cxx"
-        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON -DLOGANDROIDTARGET=ON"
+        cmake_gen_args="-DCMAKE_C_COMPILER=$cc \
+		-DCMAKE_CXX_COMPILER=$cxx \
+		-DPREFER_STATIC_LINKING=ON \
+        -DCMAKE_TOOLCHAIN_FILE=$LOCALDIR/ndk/build/cmake/android.toolchain.cmake \
+        -DANDROID_ABI=arm64-v8a \
+        -DANDROID_PLATFORM=android-30 \
+        -DANDROID_STL=c++_static"
         targets="mke2fs;tune2fs;e2fsdroid;debugfs;resize2fs;e2fsck;e2fsextract"
     elif [[ $(uname) == "Linux" ]]; then
-        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON -DLOGANDROIDTARGET=OFF"
+        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON"
         targets="mke2fs;tune2fs;e2fsdroid;debugfs;resize2fs;e2fsck;e2fsextract"
     elif [[ $(uname -o) == "Msys" ]]; then
-        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON -DLOGANDROIDTARGET=OFF"
+        cmake_gen_args="-DCMAKE_C_COMPILER=$cc -DCMAKE_CXX_COMPILER=$cxx -DPREFER_STATIC_LINKING=ON"
         targets="mke2fs;e2fsextract"
     fi
 
@@ -114,6 +118,5 @@ install_deps
 check_msys_clang64_environment
 check_gcc
 set_toolchains
-# if you need to compile for aarch64, please use "build android 30"
 build $@
 install

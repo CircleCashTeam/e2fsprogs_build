@@ -47,10 +47,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     )
 endif()
 
-#android target src
-option(LOGANDROIDTARGET "" OFF)
-
-if(LOGANDROIDTARGET)
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     list(APPEND liblog_src ${liblog_target_sources})
 endif()
 
