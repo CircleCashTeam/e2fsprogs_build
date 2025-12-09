@@ -1,11 +1,16 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <stdio.h>
 
@@ -104,49 +109,33 @@ const uint8_t *X509_keyid_get0(const X509 *x, int *out_len) {
 }
 
 int X509_add1_trust_object(X509 *x, const ASN1_OBJECT *obj) {
-  X509_CERT_AUX *aux;
-  ASN1_OBJECT *objtmp = OBJ_dup(obj);
-  if (objtmp == NULL) {
-    goto err;
+  bssl::UniquePtr<ASN1_OBJECT> objtmp(OBJ_dup(obj));
+  if (objtmp == nullptr) {
+    return 0;
   }
-  aux = aux_get(x);
-  if (aux->trust == NULL) {
+  X509_CERT_AUX *aux = aux_get(x);
+  if (aux->trust == nullptr) {
     aux->trust = sk_ASN1_OBJECT_new_null();
-    if (aux->trust == NULL) {
-      goto err;
+    if (aux->trust == nullptr) {
+      return 0;
     }
   }
-  if (!sk_ASN1_OBJECT_push(aux->trust, objtmp)) {
-    goto err;
-  }
-  return 1;
-
-err:
-  ASN1_OBJECT_free(objtmp);
-  return 0;
+  return bssl::PushToStack(aux->trust, std::move(objtmp));
 }
 
 int X509_add1_reject_object(X509 *x, const ASN1_OBJECT *obj) {
-  X509_CERT_AUX *aux;
-  ASN1_OBJECT *objtmp = OBJ_dup(obj);
-  if (objtmp == NULL) {
-    goto err;
+  bssl::UniquePtr<ASN1_OBJECT> objtmp(OBJ_dup(obj));
+  if (objtmp == nullptr) {
+    return 0;
   }
-  aux = aux_get(x);
-  if (aux->reject == NULL) {
+  X509_CERT_AUX *aux = aux_get(x);
+  if (aux->reject == nullptr) {
     aux->reject = sk_ASN1_OBJECT_new_null();
-    if (aux->reject == NULL) {
-      goto err;
+    if (aux->reject == nullptr) {
+      return 0;
     }
   }
-  if (!sk_ASN1_OBJECT_push(aux->reject, objtmp)) {
-    goto err;
-  }
-  return 1;
-
-err:
-  ASN1_OBJECT_free(objtmp);
-  return 0;
+  return bssl::PushToStack(aux->reject, std::move(objtmp));
 }
 
 void X509_trust_clear(X509 *x) {

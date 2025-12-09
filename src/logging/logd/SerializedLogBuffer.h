@@ -62,7 +62,7 @@ class SerializedLogBuffer final : public LogBuffer {
     void MaybePrune(log_id_t log_id) REQUIRES(logd_lock);
     void Prune(log_id_t log_id, size_t bytes_to_free) REQUIRES(logd_lock);
     void UidClear(log_id_t log_id, uid_t uid) REQUIRES(logd_lock);
-    void RemoveChunkFromStats(log_id_t log_id, SerializedLogChunk& chunk);
+    void RemoveChunkFromStats(log_id_t log_id, SerializedLogChunk& chunk) REQUIRES(logd_lock);
     size_t GetSizeUsed(log_id_t id) REQUIRES(logd_lock);
 
     LogReaderList* reader_list_;

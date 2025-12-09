@@ -23,17 +23,28 @@ if [ "$1" != setup -a "$1" != teardown ]; then
     exit 1
 fi
 
+MODE=$1
+
+save_or_restore () {
+    local PROP=$1
+    local SAVED=/data/local/tests/${PROP}.saved
+    if [ "$MODE" = setup ]; then
+        if [ -n "$(getprop ${PROP})" ]; then
+            getprop ${PROP} > ${SAVED}
+            setprop ${PROP} ""
+        fi
+    elif [ "$MODE" = teardown ]; then
+        if [ -e ${SAVED} ]; then
+            setprop ${PROP} $(cat ${SAVED})
+            rm ${SAVED}
+        fi
+    fi
+}
+
 # b/279123901: If persist.log.tag is set, remove the sysprop during the test.
-PROP=persist.log.tag
-SAVED=/data/local/tests/persist.log.tag.saved
-if [ "$1" = setup ]; then
-    if [ -n "$(getprop ${PROP})" ]; then
-        getprop ${PROP} > ${SAVED}
-        setprop ${PROP} ""
-    fi
-elif [ "$1" = teardown ]; then
-    if [ -e ${SAVED} ]; then
-        setprop ${PROP} $(cat ${SAVED})
-        rm ${SAVED}
-    fi
-fi
+# b/379667769: do the same as above for log.tag as well
+PROPS=(persist.log.tag log.tag)
+for PROP in "${PROPS[@]}"
+do
+    save_or_restore ${PROP}
+done

@@ -1,16 +1,21 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef OPENSSL_HEADER_DIGEST_H
 #define OPENSSL_HEADER_DIGEST_H
 
-#include <openssl/base.h>
+#include <openssl/base.h>  // IWYU pragma: export
 
 #if defined(__cplusplus)
 extern "C" {
@@ -161,11 +166,6 @@ OPENSSL_EXPORT size_t EVP_MD_size(const EVP_MD *md);
 // EVP_MD_block_size returns the native block-size of |md|, in bytes.
 OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 
-// EVP_MD_FLAG_PKEY_DIGEST indicates that the digest function is used with a
-// specific public key in order to verify signatures. (For example,
-// EVP_dss1.)
-#define EVP_MD_FLAG_PKEY_DIGEST 1
-
 // EVP_MD_FLAG_DIGALGID_ABSENT indicates that the parameter type in an X.509
 // DigestAlgorithmIdentifier representing this digest function should be
 // undefined rather than NULL.
@@ -213,10 +213,32 @@ OPENSSL_EXPORT int EVP_MD_CTX_type(const EVP_MD_CTX *ctx);
 // returns the digest function or NULL on error.
 OPENSSL_EXPORT const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs);
 
+// EVP_parse_digest_algorithm_nid behaves like |EVP_parse_digest_algorithm|
+// except it returns |NID_undef| on error and some other value on success. This
+// may be used to avoid depending on every digest algorithm in the library.
+OPENSSL_EXPORT int EVP_parse_digest_algorithm_nid(CBS *cbs);
+
 // EVP_marshal_digest_algorithm marshals |md| as an AlgorithmIdentifier
 // structure and appends the result to |cbb|. It returns one on success and zero
-// on error.
+// on error. It sets the parameters field to NULL. Use
+// |EVP_marshal_digest_algorithm_no_params| to omit the parameters instead.
+//
+// In general, the parameters should be omitted for digest algorithms, but the
+// following specifications require a NULL parameter instead.
+//
+// - Hash algorithms and MGF-1 hash algorithms used in RSASSA-PSS and RSAES-OAEP
+//   (see RFC 4055, Section 2.1)
+// - The hash algorithm in the DigestInfo structure of RSASSA-PKCS1-v1_5 (see
+//   RFC 8017, Appendix A.2.4)
+//
+// Some existing software also uses NULL parameters in other contexts. In
+// practice, digest algorithms are encoded wildly inconsistently.
 OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
+
+// EVP_marshal_digest_algorithm_no_params behaves like
+// |EVP_marshal_digest_algorithm| but omits the parameters field.
+OPENSSL_EXPORT int EVP_marshal_digest_algorithm_no_params(CBB *cbb,
+                                                          const EVP_MD *md);
 
 
 // Deprecated functions.
@@ -266,14 +288,27 @@ OPENSSL_EXPORT void EVP_MD_CTX_set_flags(EVP_MD_CTX *ctx, int flags);
 OPENSSL_EXPORT int EVP_MD_nid(const EVP_MD *md);
 
 
+// Internal constants and structures (hidden).
+
 struct evp_md_pctx_ops;
 
+// EVP_MAX_MD_DATA_SIZE is a private constant which specifies the size of the
+// largest digest state. SHA-512 and BLAKE2b are joint-largest. Consuming code
+// only uses this via the `EVP_MD_CTX` type.
+#define EVP_MAX_MD_DATA_SIZE 208
+
+// env_md_ctx_st is typoed ("evp" -> "env"), but the typo comes from OpenSSL
+// and some consumers forward-declare these structures so we're leaving it
+// alone.
 struct env_md_ctx_st {
+  // md_data contains the hash-specific context.
+  union {
+    uint8_t md_data[EVP_MAX_MD_DATA_SIZE];
+    uint64_t alignment;
+  };
+
   // digest is the underlying digest function, or NULL if not set.
   const EVP_MD *digest;
-  // md_data points to a block of memory that contains the hash-specific
-  // context.
-  void *md_data;
 
   // pctx is an opaque (at this layer) pointer to additional context that
   // EVP_PKEY functions may store in this object.

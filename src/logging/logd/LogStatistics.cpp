@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <list>
 #include <vector>
 

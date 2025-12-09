@@ -16,6 +16,7 @@
 
 package {
     default_applicable_licenses: ["system_logging_logcat_license"],
+    default_team: "trendy_team_native_tools_libraries",
 }
 
 // Added automatically by a large-scale-change
@@ -34,9 +35,6 @@ cc_binary {
     name: "logcat",
 
     cflags: [
-        "-Wall",
-        "-Wextra",
-        "-Werror",
         "-DANDROID_BASE_UNIQUE_FD_DISABLE_IMPLICIT_CONVERSION=1",
     ],
     shared_libs: [
@@ -67,5 +65,39 @@ sh_binary {
     symlinks: [
         "logpersist.stop",
         "logpersist.cat",
+    ],
+}
+
+// -----------------------------------------------------------------------------
+// Benchmarks
+// ----------------------------------------------------------------------------
+
+// Build benchmarks for the device. Run with:
+//   adb shell /data/nativetest/logcat-benchmarks/logcat-benchmarks
+cc_benchmark {
+    name: "logcat-benchmarks",
+    srcs: ["logcat_benchmark.cpp"],
+    shared_libs: ["libbase"],
+}
+
+// -----------------------------------------------------------------------------
+// Unit tests.
+// -----------------------------------------------------------------------------
+
+// Build tests for the device (with .so). Run with:
+//   adb shell /data/nativetest/logcat-unit-tests/logcat-unit-tests
+cc_test {
+    name: "logcat-unit-tests",
+    cflags: [
+        // TODO: what's going on here? are these actually needed, and why?
+        "-fstack-protector-all",
+        "-g",
+        "-fno-builtin",
+    ],
+    shared_libs: ["libbase"],
+    static_libs: ["liblog"],
+    srcs: [
+        "logcat_test.cpp",
+        "logcatd_test.cpp",
     ],
 }

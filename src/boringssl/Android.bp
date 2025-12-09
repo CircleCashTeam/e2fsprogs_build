@@ -76,10 +76,7 @@ cc_defaults {
 
 cc_defaults {
     name: "boringssl_flags_baremetal",
-    cflags: [
-        "-DBORINGSSL_NO_STATIC_INITIALIZER",
-        "-DANDROID_BAREMETAL",
-    ],
+    cflags: ["-DANDROID_BAREMETAL"],
     defaults: [
         "boringssl_flags_common",
         "cc_baremetal_defaults",
@@ -214,7 +211,7 @@ cc_object {
 
 bootstrap_go_package {
     name: "bssl_ar",
-    pkgPath: "boringssl.googlesource.com/boringssl/util/ar",
+    pkgPath: "boringssl.googlesource.com/boringssl.git/util/ar",
     srcs: [
         "src/util/ar/ar.go",
     ],
@@ -225,7 +222,7 @@ bootstrap_go_package {
 
 bootstrap_go_package {
     name: "bssl_fipscommon",
-    pkgPath: "boringssl.googlesource.com/boringssl/util/fipstools/fipscommon",
+    pkgPath: "boringssl.googlesource.com/boringssl.git/util/fipstools/fipscommon",
     srcs: [
         "src/util/fipstools/fipscommon/const.go",
     ],
@@ -430,8 +427,7 @@ cc_defaults {
     name: "boringssl_fuzz_unsafe_defaults",
     host_supported: true,
     cflags: [
-        "-DBORINGSSL_UNSAFE_DETERMINISTIC_MODE",
-        "-DBORINGSSL_UNSAFE_FUZZER_MODE",
+        "-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION",
     ],
     visibility: [
         "//frameworks/native/libs/binder/tests:__subpackages__",
@@ -666,6 +662,9 @@ cc_test {
             test_suites: ["mts-conscrypt"],
         },
     },
+    visibility: [
+        "//platform_testing:__subpackages__",
+    ],
 }
 
 cc_test {
@@ -702,6 +701,9 @@ cc_test {
             test_suites: ["mts-conscrypt"],
         },
     },
+    visibility: [
+        "//platform_testing:__subpackages__",
+    ],
 }
 
 // Utility binary for CMVP on-site testing.
@@ -851,6 +853,7 @@ rust_defaults {
     visibility: [
         "//external/rust/crates/openssl",
         "//external/rust/android-crates-io/crates/tokio-openssl",
+        "//system/gatekeeper/rust/boringssl",
         "//system/keymint/boringssl",
         "//system/security/prng_seeder",
     ],
@@ -940,6 +943,19 @@ rust_defaults {
 rust_library {
     name: "libbssl_crypto",
     defaults: ["libbssl_crypto_defaults"],
+    host_supported: true,
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.virt",
+    ],
+    vendor_available: true,
+    product_available: true,
+}
+
+rust_library {
+    name: "libbssl_crypto_mlalgs",
+    defaults: ["libbssl_crypto_defaults"],
+    features: ["mlalgs"],
     host_supported: true,
     apex_available: [
         "//apex_available:platform",

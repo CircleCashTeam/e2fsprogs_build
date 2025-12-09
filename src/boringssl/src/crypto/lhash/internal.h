@@ -1,16 +1,21 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#ifndef OPENSSL_HEADER_LHASH_INTERNAL_H
-#define OPENSSL_HEADER_LHASH_INTERNAL_H
+#ifndef OPENSSL_HEADER_CRYPTO_LHASH_INTERNAL_H
+#define OPENSSL_HEADER_CRYPTO_LHASH_INTERNAL_H
 
-#include <openssl/lhash.h>
+#include <openssl/base.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -35,7 +40,13 @@ extern "C" {
 //
 // A macro will be defined for each of the |OPENSSL_lh_*| functions below. For
 // |LHASH_OF(foo)|, the macros would be |lh_foo_new|, |lh_foo_num_items| etc.
+//
+// TODO(davidben): Now that this type is completely internal, this can just be a
+// C++ template without any macros.
 
+
+#define LHASH_OF(type) struct lhash_st_##type
+#define DECLARE_LHASH_OF(type) LHASH_OF(type);
 
 // lhash_cmp_func is a comparison function that returns a value equal, or not
 // equal, to zero depending on whether |*a| is equal, or not equal to |*b|,
@@ -213,4 +224,4 @@ OPENSSL_EXPORT void OPENSSL_lh_doall_arg(_LHASH *lh,
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_LHASH_INTERNAL_H
+#endif  // OPENSSL_HEADER_CRYPTO_LHASH_INTERNAL_H

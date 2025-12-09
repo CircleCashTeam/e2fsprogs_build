@@ -84,17 +84,6 @@ y_bss_get:
 z_bss_get:
 	leaq	.Lz_local_target(%rip), %rax
 	ret
-.type OPENSSL_ia32cap_get, @function
-.globl OPENSSL_ia32cap_get
-.LOPENSSL_ia32cap_get_local_target:
-OPENSSL_ia32cap_get:
-	leaq OPENSSL_ia32cap_P(%rip), %rax
-	ret
-.extern OPENSSL_ia32cap_P
-.type OPENSSL_ia32cap_addr_delta, @object
-.size OPENSSL_ia32cap_addr_delta, 8
-OPENSSL_ia32cap_addr_delta:
-.quad OPENSSL_ia32cap_P-OPENSSL_ia32cap_addr_delta
 .type BORINGSSL_bcm_text_hash, @object
 .size BORINGSSL_bcm_text_hash, 32
 BORINGSSL_bcm_text_hash:

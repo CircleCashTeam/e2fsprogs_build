@@ -1,12 +1,17 @@
-/*
- * Copyright 2011-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2011-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ec.h>
 
@@ -111,35 +116,30 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   // for primes which are not 3 (mod 4), namely P-224 and custom curves. P-224's
   // prime is particularly inconvenient for compressed coordinates. See
   // https://cr.yp.to/papers/sqroot.pdf
-  BN_CTX *new_ctx = NULL;
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
+  bssl::UniquePtr<BN_CTX> new_ctx;
+  if (ctx == nullptr) {
+    new_ctx.reset(BN_CTX_new());
+    if (new_ctx == nullptr) {
       return 0;
     }
+    ctx = new_ctx.get();
   }
 
-  int ret = 0;
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *x = BN_CTX_get(ctx);
-  if (x == NULL || !BN_bin2bn(buf + 1, field_len, x)) {
-    goto err;
+  if (x == nullptr || !BN_bin2bn(buf + 1, field_len, x)) {
+    return 0;
   }
   if (BN_ucmp(x, &group->field.N) >= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    goto err;
+    return 0;
   }
 
   if (!EC_POINT_set_compressed_coordinates_GFp(group, point, x, y_bit, ctx)) {
-    goto err;
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }
 
 int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
@@ -209,28 +209,27 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
     return 0;
   }
 
-  BN_CTX *new_ctx = NULL;
-  int ret = 0;
-
   ERR_clear_error();
 
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
+  bssl::UniquePtr<BN_CTX> new_ctx;
+  if (ctx == nullptr) {
+    new_ctx.reset(BN_CTX_new());
+    if (new_ctx == nullptr) {
       return 0;
     }
+    ctx = new_ctx.get();
   }
 
   y_bit = (y_bit != 0);
 
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *tmp1 = BN_CTX_get(ctx);
   BIGNUM *tmp2 = BN_CTX_get(ctx);
   BIGNUM *a = BN_CTX_get(ctx);
   BIGNUM *b = BN_CTX_get(ctx);
   BIGNUM *y = BN_CTX_get(ctx);
   if (y == NULL || !EC_GROUP_get_curve_GFp(group, NULL, a, b, ctx)) {
-    goto err;
+    return 0;
   }
 
   // Recover y.  We have a Weierstrass equation
@@ -240,7 +239,7 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
   // tmp1 := x^3
   if (!BN_mod_sqr(tmp2, x, field, ctx) ||
       !BN_mod_mul(tmp1, tmp2, x, field, ctx)) {
-    goto err;
+    return 0;
   }
 
   // tmp1 := tmp1 + a*x
@@ -248,54 +247,47 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
     if (!bn_mod_lshift1_consttime(tmp2, x, field, ctx) ||
         !bn_mod_add_consttime(tmp2, tmp2, x, field, ctx) ||
         !bn_mod_sub_consttime(tmp1, tmp1, tmp2, field, ctx)) {
-      goto err;
+      return 0;
     }
   } else {
     if (!BN_mod_mul(tmp2, a, x, field, ctx) ||
         !bn_mod_add_consttime(tmp1, tmp1, tmp2, field, ctx)) {
-      goto err;
+      return 0;
     }
   }
 
   // tmp1 := tmp1 + b
   if (!bn_mod_add_consttime(tmp1, tmp1, b, field, ctx)) {
-    goto err;
+    return 0;
   }
 
   if (!BN_mod_sqrt(y, tmp1, field, ctx)) {
-    uint32_t err = ERR_peek_last_error();
-    if (ERR_GET_LIB(err) == ERR_LIB_BN &&
-        ERR_GET_REASON(err) == BN_R_NOT_A_SQUARE) {
+    if (ERR_equals(ERR_peek_last_error(), ERR_LIB_BN, BN_R_NOT_A_SQUARE)) {
       ERR_clear_error();
       OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSED_POINT);
     } else {
       OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     }
-    goto err;
+    return 0;
   }
 
   if (y_bit != BN_is_odd(y)) {
     if (BN_is_zero(y)) {
       OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSION_BIT);
-      goto err;
+      return 0;
     }
     if (!BN_usub(y, field, y)) {
-      goto err;
+      return 0;
     }
   }
   if (y_bit != BN_is_odd(y)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
+    return 0;
   }
 
   if (!EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
-    goto err;
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }

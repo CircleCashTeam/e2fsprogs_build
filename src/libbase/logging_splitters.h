@@ -51,14 +51,26 @@ static void SplitByLogdChunks(LogId log_id, LogSeverity severity, const char* ta
   // The maximum size of a payload, after the log header that logd will accept is
   // LOGGER_ENTRY_MAX_PAYLOAD, so subtract the other elements in the payload to find the size of
   // the string that we can log in each pass.
-  // The protocol is documented in liblog/README.protocol.md.
-  // Specifically we subtract a byte for the priority, the length of the tag + its null terminator,
-  // and an additional byte for the null terminator on the payload.  We subtract an additional 32
-  // bytes for slack, similar to java/android/util/Log.java.
-  ptrdiff_t max_size = LOGGER_ENTRY_MAX_PAYLOAD - strlen(tag) - 35;
-  if (max_size <= 0) {
-    abort();
+  // (The protocol is documented in liblog/README.protocol.md.)
+  size_t max_size = LOGGER_ENTRY_MAX_PAYLOAD;
+  // Specifically we subtract a byte for the priority...
+  max_size -= 1;
+  // A byte for the null terminator on the tag...
+  max_size -= 1;
+  // A byte for the null terminator on the payload...
+  max_size -= 1;
+  // We subtract an additional 32 bytes for slack, similar to java/android/util/Log.java.
+  max_size -= 32;
+  // And finally the length of the tag.
+  // If the tag is unreasonable, we replace it with a constant.
+  // (It's possible that our definition of "unreasonable" should actually be max_size/2 instead.)
+  size_t tag_length = strlen(tag);
+  if (tag_length >= max_size) {
+    tag = "TAG_TOO_LONG";
+    tag_length = strlen(tag);
   }
+  max_size -= tag_length;
+
   // If we're logging a fatal message, we'll append the file and line numbers.
   bool add_file = file != nullptr && (severity == FATAL || severity == FATAL_WITHOUT_ABORT);
 
@@ -69,7 +81,7 @@ static void SplitByLogdChunks(LogId log_id, LogSeverity severity, const char* ta
   int file_header_size = file_header.size();
 
   __attribute__((uninitialized)) char logd_chunk[max_size + 1];
-  ptrdiff_t chunk_position = 0;
+  size_t chunk_position = 0;
 
   auto call_log_function = [&]() {
     log_function(log_id, severity, tag, logd_chunk);
@@ -112,8 +124,7 @@ static void SplitByLogdChunks(LogId log_id, LogSeverity severity, const char* ta
 
   // If we have left over data in the buffer and we can fit the rest of msg, add it to the buffer
   // then write the buffer.
-  if (chunk_position != 0 &&
-      chunk_position + static_cast<int>(strlen(msg)) + 1 + file_header_size <= max_size) {
+  if (chunk_position != 0 && chunk_position + strlen(msg) + 1 + file_header_size <= max_size) {
     write_to_logd_chunk(msg, -1);
     call_log_function();
   } else {
@@ -155,10 +166,7 @@ static std::string StderrOutputGenerator(const struct timespec& ts, int pid, uin
   size_t n = strftime(timestamp, sizeof(timestamp), "%m-%d %H:%M:%S", &now);
   snprintf(timestamp + n, sizeof(timestamp) - n, ".%03ld", ts.tv_nsec / (1000 * 1000));
 
-  static const char log_characters[] = "VDIWEFF";
-  static_assert(arraysize(log_characters) - 1 == FATAL + 1,
-                "Mismatch in size of log_characters and values in LogSeverity");
-  char severity_char = log_characters[severity];
+  char severity_char = kSeverityChars[severity];
   std::string line_prefix;
   const char* real_tag = tag ? tag : "nullptr";
   if (file != nullptr) {

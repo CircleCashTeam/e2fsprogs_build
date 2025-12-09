@@ -2,6 +2,16 @@
 # logpersist cat, start and stop handlers
 progname="${0##*/}"
 
+function setprop_and_wait_for_change() {
+  local name="$1"
+  local value="$2"
+
+  setprop "${name}" "${value}"
+  while [ "${value}" = "${getprop ${name}}" ]; do
+    sleep 0.1
+  done
+}
+
 property=persist.logd.logpersistd
 
 case `getprop ${property#persist.}.enable` in
@@ -81,7 +91,7 @@ case ${progname} in
   current_size="`getprop ${property#persist.}.size`"
   if [ "${service}" = "`getprop ${property#persist.}`" ]; then
     if [ "true" = "${clear}" ]; then
-      setprop ${property#persist.} "clear"
+      setprop_and_wait_for_change ${property#persist.} "clear"
     elif [ "${buffer}|${size}" != "${current_buffer}|${current_size}" ]; then
       echo   "ERROR: Changing existing collection parameters from" >&2
       if [ "${buffer}" != "${current_buffer}" ]; then
@@ -104,7 +114,7 @@ case ${progname} in
       exit 1
     fi
   elif [ "true" = "${clear}" ]; then
-    setprop ${property#persist.} "clear"
+    setprop_and_wait_for_change ${property#persist.} "clear"
   fi
   if [ -n "${buffer}${current_buffer}" ]; then
     setprop ${property}.buffer "${buffer}"
@@ -120,9 +130,6 @@ case ${progname} in
       setprop ${property#persist.}.size ""
     fi
   fi
-  while [ "clear" = "`getprop ${property#persist.}`" ]; do
-    continue
-  done
   # Tell Settings that we are back on again if we turned logging off
   tag="${log_tag#Settings}"
   if [ X"${log_tag}" != X"${tag}" ]; then
@@ -142,7 +149,7 @@ case ${progname} in
     echo "WARNING: Can not use --size or --buffer with ${progname%.*}.stop" >&2
   fi
   if [ "true" = "${clear}" ]; then
-    setprop ${property#persist.} "clear"
+    setprop_and_wait_for_change ${property#persist.} "clear"
   else
     setprop ${property#persist.} "stop"
   fi
@@ -156,9 +163,6 @@ case ${progname} in
     # deal with trampoline for empty properties
     setprop ${property#persist.}.size ""
   fi
-  while [ "clear" = "`getprop ${property#persist.}`" ]; do
-    continue
-  done
   ;;
 *)
   echo "ERROR: Unexpected command ${0##*/} ${args}" >&2

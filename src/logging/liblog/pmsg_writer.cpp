@@ -23,13 +23,15 @@
 #include <sys/types.h>
 #include <time.h>
 
+#include <atomic>
+
 #include <log/log_properties.h>
 #include <private/android_logger.h>
 
 #include "logger.h"
 #include "uio.h"
 
-static atomic_int pmsg_fd;
+static std::atomic<int> pmsg_fd;
 
 static void GetPmsgFd() {
   // Note if open() fails and returns -1, that value is stored into pmsg_fd as an indication that
@@ -189,10 +191,10 @@ ssize_t __android_log_pmsg_file_write(log_id_t logId, char prio, const char* fil
   struct iovec vec[3];
 
   /* Make sure the logId value is not a bad idea */
-  if ((logId == LOG_ID_KERNEL) ||   /* Verbotten */
+  if ((logId == LOG_ID_KERNEL) ||   /* We are not the kernel */
       (logId == LOG_ID_EVENTS) ||   /* Do not support binary content */
       (logId == LOG_ID_SECURITY) || /* Bad idea to allow */
-      ((unsigned)logId >= 32)) {    /* fit within logMask on arch32 */
+      ((unsigned)logId >= 32)) {    /* Must fit in logMask's uint32_t */
     return -EINVAL;
   }
 

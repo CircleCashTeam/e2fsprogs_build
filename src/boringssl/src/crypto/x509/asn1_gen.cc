@@ -1,11 +1,16 @@
-/*
- * Copyright 2002-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2002-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/x509.h>
 
@@ -53,27 +58,23 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
 static int bitstr_cb(const char *elem, size_t len, void *bitstr);
 
 ASN1_TYPE *ASN1_generate_v3(const char *str, const X509V3_CTX *cnf) {
-  CBB cbb;
-  if (!CBB_init(&cbb, 0) ||  //
-      !generate_v3(&cbb, str, cnf, /*tag=*/0, ASN1_GEN_FORMAT_ASCII,
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 0) ||  //
+      !generate_v3(cbb.get(), str, cnf, /*tag=*/0, ASN1_GEN_FORMAT_ASCII,
                    /*depth=*/0)) {
-    CBB_cleanup(&cbb);
-    return NULL;
+    return nullptr;
   }
 
   // While not strictly necessary to avoid a DoS (we rely on any super-linear
   // checks being performed internally), cap the overall output to
   // |ASN1_GEN_MAX_OUTPUT| so the externally-visible behavior is consistent.
-  if (CBB_len(&cbb) > ASN1_GEN_MAX_OUTPUT) {
+  if (CBB_len(cbb.get()) > ASN1_GEN_MAX_OUTPUT) {
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
-    CBB_cleanup(&cbb);
-    return NULL;
+    return nullptr;
   }
 
-  const uint8_t *der = CBB_data(&cbb);
-  ASN1_TYPE *ret = d2i_ASN1_TYPE(NULL, &der, CBB_len(&cbb));
-  CBB_cleanup(&cbb);
-  return ret;
+  const uint8_t *der = CBB_data(cbb.get());
+  return d2i_ASN1_TYPE(nullptr, &der, CBB_len(cbb.get()));
 }
 
 static int cbs_str_equal(const CBS *cbs, const char *str) {
@@ -298,9 +299,9 @@ static int generate_v3(CBB *cbb, const char *str, const X509V3_CTX *cnf,
       {"SET", CBS_ASN1_SET},
   };
   CBS_ASN1_TAG type = 0;
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTypes); i++) {
-    if (cbs_str_equal(&name, kTypes[i].name)) {
-      type = kTypes[i].type;
+  for (const auto &t : kTypes) {
+    if (cbs_str_equal(&name, t.name)) {
+      type = t.type;
       break;
     }
   }

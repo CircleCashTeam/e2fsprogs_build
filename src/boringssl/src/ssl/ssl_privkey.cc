@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ssl.h>
 
@@ -96,12 +101,25 @@ static const SSL_SIGNATURE_ALGORITHM kSignatureAlgorithms[] = {
 };
 
 static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kSignatureAlgorithms); i++) {
-    if (kSignatureAlgorithms[i].sigalg == sigalg) {
-      return &kSignatureAlgorithms[i];
+  for (const auto &alg : kSignatureAlgorithms) {
+    if (alg.sigalg == sigalg) {
+      return &alg;
     }
   }
-  return NULL;
+  return nullptr;
+}
+
+bssl::UniquePtr<EVP_PKEY> ssl_parse_peer_subject_public_key_info(
+    Span<const uint8_t> spki) {
+  // Ideally the set of reachable algorithms would flow from |SSL_CTX| for dead
+  // code elimination, but for now we just specify every algorithm that might be
+  // reachable from libssl.
+  const EVP_PKEY_ALG *const algs[] = {
+      EVP_pkey_rsa(),     EVP_pkey_ec_p256(), EVP_pkey_ec_p384(),
+      EVP_pkey_ec_p521(), EVP_pkey_ed25519(),
+  };
+  return bssl::UniquePtr<EVP_PKEY>(EVP_PKEY_from_subject_public_key_info(
+      spki.data(), spki.size(), algs, std::size(algs)));
 }
 
 bool ssl_pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
@@ -149,8 +167,7 @@ bool ssl_pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
     // EC keys have a curve requirement.
     if (alg->pkey_type == EVP_PKEY_EC &&
         (alg->curve == NID_undef ||
-         EC_GROUP_get_curve_name(
-             EC_KEY_get0_group(EVP_PKEY_get0_EC_KEY(pkey))) != alg->curve)) {
+         EVP_PKEY_get_ec_curve_nid(pkey) != alg->curve)) {
       return false;
     }
   } else if (!alg->tls12_ok) {
@@ -180,7 +197,7 @@ static bool setup_ctx(SSL *ssl, EVP_MD_CTX *ctx, EVP_PKEY *pkey,
 
   if (alg->is_rsa_pss) {
     if (!EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) ||
-        !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1 /* salt len = hash len */)) {
+        !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, RSA_PSS_SALTLEN_DIGEST)) {
       return false;
     }
   }
@@ -267,10 +284,10 @@ bool ssl_public_key_verify(SSL *ssl, Span<const uint8_t> signature,
   }
   bool ok = EVP_DigestVerify(ctx.get(), signature.data(), signature.size(),
                              in.data(), in.size());
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  ok = true;
-  ERR_clear_error();
-#endif
+  if (CRYPTO_fuzzer_mode_enabled()) {
+    ok = true;
+    ERR_clear_error();
+  }
   return ok;
 }
 
@@ -514,18 +531,6 @@ int SSL_is_signature_algorithm_rsa_pss(uint16_t sigalg) {
   return alg != nullptr && alg->is_rsa_pss;
 }
 
-static int compare_uint16_t(const void *p1, const void *p2) {
-  uint16_t u1 = *((const uint16_t *)p1);
-  uint16_t u2 = *((const uint16_t *)p2);
-  if (u1 < u2) {
-    return -1;
-  } else if (u1 > u2) {
-    return 1;
-  } else {
-    return 0;
-  }
-}
-
 static bool sigalgs_unique(Span<const uint16_t> in_sigalgs) {
   if (in_sigalgs.size() < 2) {
     return true;
@@ -536,8 +541,7 @@ static bool sigalgs_unique(Span<const uint16_t> in_sigalgs) {
     return false;
   }
 
-  qsort(sigalgs.data(), sigalgs.size(), sizeof(uint16_t), compare_uint16_t);
-
+  std::sort(sigalgs.begin(), sigalgs.end());
   for (size_t i = 1; i < sigalgs.size(); i++) {
     if (sigalgs[i - 1] == sigalgs[i]) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_SIGNATURE_ALGORITHM);

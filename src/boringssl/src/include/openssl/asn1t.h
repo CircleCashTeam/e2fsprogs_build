@@ -1,17 +1,22 @@
-/*
- * Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef OPENSSL_HEADER_ASN1T_H
 #define OPENSSL_HEADER_ASN1T_H
 
 #include <openssl/asn1.h>
-#include <openssl/base.h>
+#include <openssl/base.h>   // IWYU pragma: export
 
 #if defined(__cplusplus)
 extern "C" {
@@ -285,12 +290,10 @@ struct ASN1_TEMPLATE_st {
 typedef struct ASN1_ADB_TABLE_st ASN1_ADB_TABLE;
 typedef struct ASN1_ADB_st ASN1_ADB;
 
-typedef struct asn1_must_be_null_st ASN1_MUST_BE_NULL;
-
 struct ASN1_ADB_st {
   uint32_t flags;       /* Various flags */
   unsigned long offset; /* Offset of selector field */
-  ASN1_MUST_BE_NULL *unused;
+  CRYPTO_MUST_BE_NULL *unused;
   const ASN1_ADB_TABLE *tbl;       /* Table of possible types */
   long tblcount;                   /* Number of entries in tbl */
   const ASN1_TEMPLATE *default_tt; /* Type to use if no match */

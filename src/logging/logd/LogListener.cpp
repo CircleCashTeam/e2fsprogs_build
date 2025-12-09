@@ -28,9 +28,15 @@
 #include <private/android_filesystem_config.h>
 #include <private/android_logger.h>
 
+#include <IOUringSocketHandler/IOUringSocketHandler.h>
+#include <android-base/logging.h>
+#include <android_logd_flags.h>
+
 #include "LogBuffer.h"
 #include "LogListener.h"
 #include "LogPermissions.h"
+
+static bool uring_enabled_ = false;
 
 LogListener::LogListener(LogBuffer* buf) : socket_(GetLogSocket()), logbuf_(buf) {}
 
@@ -43,15 +49,58 @@ bool LogListener::StartListener() {
     return true;
 }
 
+bool LogListener::InitializeUring() {
+    if (!IOUringSocketHandler::IsIouringSupported()) {
+        return false;
+    }
+
+    const int numBuffers = 32;
+
+    auto temp_listener = std::make_unique<IOUringSocketHandler>(socket_);
+    if (!temp_listener->SetupIoUring(numBuffers)) {
+        return false;
+    }
+
+    if (!temp_listener->AllocateAndRegisterBuffers(
+                numBuffers, sizeof(android_log_header_t) + LOGGER_ENTRY_MAX_PAYLOAD + 1)) {
+        return false;
+    }
+
+    if (!temp_listener->EnqueueMultishotRecvmsg()) {
+        return false;
+    }
+
+    uring_listener_ = std::move(temp_listener);
+    return true;
+}
+
 void LogListener::ThreadFunction() {
     prctl(PR_SET_NAME, "logd.writer");
 
+    uring_enabled_ = android::logd::flags::enable_iouring() && InitializeUring();
+
     while (true) {
-        HandleData();
+        if (uring_enabled_) {
+            HandleDataUring();
+        } else {
+            HandleDataSync();
+        }
     }
 }
 
-void LogListener::HandleData() {
+void LogListener::HandleDataUring() {
+    void* payload = nullptr;
+    size_t payload_len = 0;
+    struct ucred* cred = nullptr;
+
+    uring_listener_->ReceiveData(&payload, payload_len, &cred);
+    if ((payload != nullptr) && (payload_len > (ssize_t)(sizeof(android_log_header_t)))) {
+        ProcessBuffer(cred, payload, payload_len);
+    }
+    uring_listener_->ReleaseBuffer();
+}
+
+void LogListener::HandleDataSync() {
     // + 1 to ensure null terminator if MAX_PAYLOAD buffer is received
     __attribute__((uninitialized)) char
             buffer[sizeof(android_log_header_t) + LOGGER_ENTRY_MAX_PAYLOAD + 1];
@@ -84,6 +133,10 @@ void LogListener::HandleData() {
         cmsg = CMSG_NXTHDR(&hdr, cmsg);
     }
 
+    ProcessBuffer(cred, buffer, n);
+}
+
+void LogListener::ProcessBuffer(struct ucred* cred, void* buffer, ssize_t n) {
     if (cred == nullptr) {
         return;
     }

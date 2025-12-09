@@ -1,12 +1,17 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright 2005 Nokia. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright 2005 Nokia. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ssl.h>
 
@@ -63,6 +68,7 @@ BSSL_NAMESPACE_BEGIN
 //     peerALPS                [30] OCTET STRING OPTIONAL,
 //     -- Either both or none of localALPS and peerALPS must be present. If both
 //     -- are present, earlyALPN must be present and non-empty.
+//     resumableAcrossNames    [31] BOOLEAN OPTIONAL,
 // }
 //
 // Note: historically this serialization has included other optional
@@ -130,6 +136,9 @@ static const CBS_ASN1_TAG kLocalALPSTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 29;
 static const CBS_ASN1_TAG kPeerALPSTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 30;
+static const CBS_ASN1_TAG kResumableAcrossNamesTag =
+    CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 31;
+
 
 static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
                                      int for_ticket) {
@@ -159,9 +168,8 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   // serialized instead.
   if (sk_CRYPTO_BUFFER_num(in->certs.get()) > 0 && !in->peer_sha256_valid) {
     const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs.get(), 0);
-    if (!CBB_add_asn1(&session, &child, kPeerTag) ||
-        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
-                       CRYPTO_BUFFER_len(buffer))) {
+    if (!CBB_add_asn1_element(&session, kPeerTag, CRYPTO_BUFFER_data(buffer),
+                              CRYPTO_BUFFER_len(buffer))) {
       return 0;
     }
   }
@@ -333,6 +341,13 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
         !CBB_add_asn1(&session, &child, kPeerALPSTag) ||
         !CBB_add_asn1_octet_string(&child, in->peer_application_settings.data(),
                                    in->peer_application_settings.size())) {
+      return 0;
+    }
+  }
+
+  if (in->is_resumable_across_names) {
+    if (!CBB_add_asn1(&session, &child, kResumableAcrossNamesTag) ||
+        !CBB_add_asn1_bool(&child, true)) {
       return 0;
     }
   }
@@ -659,18 +674,22 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
   }
 
   CBS settings;
-  int has_local_alps, has_peer_alps;
+  int has_local_alps, has_peer_alps, is_resumable_across_names;
   if (!CBS_get_optional_asn1_octet_string(&session, &settings, &has_local_alps,
                                           kLocalALPSTag) ||
       !ret->local_application_settings.CopyFrom(settings) ||
       !CBS_get_optional_asn1_octet_string(&session, &settings, &has_peer_alps,
                                           kPeerALPSTag) ||
       !ret->peer_application_settings.CopyFrom(settings) ||
+      !CBS_get_optional_asn1_bool(&session, &is_resumable_across_names,
+                                  kResumableAcrossNamesTag,
+                                  /*default_value=*/false) ||
       CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
   }
   ret->is_quic = is_quic;
+  ret->is_resumable_across_names = is_resumable_across_names;
 
   // The two ALPS values and ALPN must be consistent.
   if (has_local_alps != has_peer_alps ||

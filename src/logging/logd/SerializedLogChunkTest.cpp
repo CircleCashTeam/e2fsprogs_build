@@ -28,6 +28,8 @@ using SerializedLogChunk_DeathTest = SilentDeathTest;
 using android::base::StringPrintf;
 
 TEST(SerializedLogChunk, smoke) {
+    auto lock = std::lock_guard{logd_lock};
+
     size_t chunk_size = 10 * 4096;
     auto chunk = SerializedLogChunk{chunk_size};
     EXPECT_EQ(chunk_size + sizeof(SerializedLogChunk), chunk.PruneSize());
@@ -57,6 +59,8 @@ TEST(SerializedLogChunk, smoke) {
 }
 
 TEST(SerializedLogChunk, fill_log_exactly) {
+    auto lock = std::lock_guard{logd_lock};
+
     static const char log_message[] = "this is a log message";
     size_t individual_message_size = sizeof(SerializedLogEntry) + sizeof(log_message);
     size_t chunk_size = individual_message_size * 3;
@@ -76,6 +80,8 @@ TEST(SerializedLogChunk, fill_log_exactly) {
 }
 
 TEST(SerializedLogChunk, three_logs) {
+    auto lock = std::lock_guard{logd_lock};
+
     size_t chunk_size = 10 * 4096;
     auto chunk = SerializedLogChunk{chunk_size};
 
@@ -112,6 +118,8 @@ TEST(SerializedLogChunk, three_logs) {
 TEST_F(SerializedLogChunk_DeathTest, catch_DecCompressedRef_CHECK) {
     size_t chunk_size = 10 * 4096;
     auto chunk = SerializedLogChunk{chunk_size};
-    EXPECT_DEATH({ chunk.DecReaderRefCount(); }, "");
+    EXPECT_DEATH({
+      auto lock = std::lock_guard{logd_lock};
+      chunk.DecReaderRefCount();
+    }, "");
 }
-

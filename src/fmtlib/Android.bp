@@ -160,7 +160,6 @@ cc_test {
         "test/base-test.cc",
         "test/chrono-test.cc",
         "test/color-test.cc",
-        "test/enforce-checks-test.cc",
         "test/format-test.cc",
         "test/noexception-test.cc",
         // Some of the os-test tests deliberately try to do bad things with
@@ -187,10 +186,21 @@ cc_test {
     ],
 }
 
+// This one needs to be seprate because multiple definition of
+// function format_as(test_enum) with printf-test.cc
 cc_test {
     name: "fmtlib_test_3",
     defaults: ["fmtlib-test-defaults"],
     srcs: [
         "test/ranges-test.cc",
+    ],
+}
+
+// enforce-checks-test.cc is a test with a main() function
+cc_test {
+    name: "fmtlib_test_4",
+    defaults: ["fmtlib-test-defaults"],
+    srcs: [
+        "test/enforce-checks-test.cc",
     ],
 }

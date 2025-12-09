@@ -21,7 +21,6 @@
 #include <inttypes.h>
 #include <poll.h>
 #include <stdarg.h>
-#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +30,8 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <atomic>
 
 #include <private/android_filesystem_config.h>
 #include <private/android_logger.h>
@@ -107,7 +108,7 @@ class LogdSocket {
   }
 
   static const int kUninitialized = -1;
-  atomic_int sock_ = kUninitialized;
+  std::atomic<int> sock_ = kUninitialized;
   bool blocking_;
 };
 
@@ -122,7 +123,7 @@ int LogdWrite(log_id_t logId, const struct timespec* ts, const struct iovec* vec
   struct iovec newVec[nr + headerLength];
   android_log_header_t header;
   size_t i, payloadSize;
-  static atomic_int dropped;
+  static std::atomic<int> dropped;
 
   LogdSocket& logd_socket =
       logId == LOG_ID_SECURITY ? LogdSocket::BlockingSocket() : LogdSocket::NonBlockingSocket();
@@ -148,7 +149,7 @@ int LogdWrite(log_id_t logId, const struct timespec* ts, const struct iovec* vec
   newVec[0].iov_base = (unsigned char*)&header;
   newVec[0].iov_len = sizeof(header);
 
-  int32_t snapshot = atomic_exchange_explicit(&dropped, 0, memory_order_relaxed);
+  int32_t snapshot = dropped.exchange(0, std::memory_order_relaxed);
   if (snapshot && __android_log_is_loggable_len(ANDROID_LOG_INFO, "liblog", strlen("liblog"),
                                                 ANDROID_LOG_VERBOSE)) {
     android_log_event_int_t buffer;
@@ -163,7 +164,7 @@ int LogdWrite(log_id_t logId, const struct timespec* ts, const struct iovec* vec
 
     ret = TEMP_FAILURE_RETRY(writev(logd_socket.sock(), newVec, 2));
     if (ret != (ssize_t)(sizeof(header) + sizeof(buffer))) {
-      atomic_fetch_add_explicit(&dropped, snapshot, memory_order_relaxed);
+      dropped.fetch_add(snapshot, std::memory_order_relaxed);
     }
   }
 
@@ -198,7 +199,7 @@ int LogdWrite(log_id_t logId, const struct timespec* ts, const struct iovec* vec
   if (ret > (ssize_t)sizeof(header)) {
     ret -= sizeof(header);
   } else if (ret < 0) {
-    atomic_fetch_add_explicit(&dropped, 1, memory_order_relaxed);
+    dropped.fetch_add(1, std::memory_order_relaxed);
   }
 
   return ret;

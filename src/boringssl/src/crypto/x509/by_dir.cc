@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <inttypes.h>
 #include <string.h>
@@ -13,7 +18,6 @@
 #include <openssl/buf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/thread.h>
 #include <openssl/x509.h>
 
 #include "../internal.h"
@@ -187,23 +191,15 @@ static int add_cert_dir(BY_DIR *ctx, const char *dir, int type) {
 
 static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
                                X509_OBJECT *ret) {
-  union {
-    struct {
-      X509 st_x509;
-      X509_CINF st_x509_cinf;
-    } x509;
-    struct {
-      X509_CRL st_crl;
-      X509_CRL_INFO st_crl_info;
-    } crl;
-  } data;
+  bssl::UniquePtr<X509> lookup_cert;
+  bssl::UniquePtr<X509_CRL> lookup_crl;
   int ok = 0;
   size_t i;
   int k;
   uint32_t h;
   uint32_t hash_array[2];
   int hash_index;
-  BUF_MEM *b = NULL;
+  char *b = NULL;
   X509_OBJECT stmp, *tmp;
   const char *postfix = "";
 
@@ -214,22 +210,23 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
   stmp.type = type;
   BY_DIR *ctx = reinterpret_cast<BY_DIR *>(xl->method_data);
   if (type == X509_LU_X509) {
-    data.x509.st_x509.cert_info = &data.x509.st_x509_cinf;
-    data.x509.st_x509_cinf.subject = name;
-    stmp.data.x509 = &data.x509.st_x509;
+    lookup_cert.reset(X509_new());
+    if (lookup_cert == nullptr ||
+        !X509_set_subject_name(lookup_cert.get(), name)) {
+      return 0;
+    }
+    stmp.data.x509 = lookup_cert.get();
     postfix = "";
   } else if (type == X509_LU_CRL) {
-    data.crl.st_crl.crl = &data.crl.st_crl_info;
-    data.crl.st_crl_info.issuer = name;
-    stmp.data.crl = &data.crl.st_crl;
+    lookup_crl.reset(X509_CRL_new());
+    if (lookup_crl == nullptr ||
+        !X509_CRL_set_issuer_name(lookup_crl.get(), name)) {
+      return 0;
+    }
+    stmp.data.crl = lookup_crl.get();
     postfix = "r";
   } else {
     OPENSSL_PUT_ERROR(X509, X509_R_WRONG_LOOKUP_TYPE);
-    goto finish;
-  }
-
-  if ((b = BUF_MEM_new()) == NULL) {
-    OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
     goto finish;
   }
 
@@ -242,12 +239,6 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
       size_t idx;
       BY_DIR_HASH htmp, *hent;
       ent = sk_BY_DIR_ENTRY_value(ctx->dirs, i);
-      if (!BUF_MEM_grow(b, strlen(ent->dir) + /* foreslash */ 1 +
-                               /* h, in hex */ 8 + /* period */ 1 +
-                               /* optional `postfix` */ 1 +
-                               /* k */ DECIMAL_SIZE(k) + /* NUL */ 1)) {
-        goto finish;
-      }
       if (type == X509_LU_CRL && ent->hashes) {
         htmp.hash = h;
         CRYPTO_MUTEX_lock_read(&ent->lock);
@@ -264,17 +255,22 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         hent = NULL;
       }
       for (;;) {
-        snprintf(b->data, b->max, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix,
-                 k);
+        OPENSSL_free(b);
+        if (OPENSSL_asprintf(&b, "%s/%08" PRIx32 ".%s%d", ent->dir, h, postfix,
+                             k) == -1) {
+          OPENSSL_PUT_ERROR(X509, ERR_R_BUF_LIB);
+          b = nullptr;
+          goto finish;
+        }
         if (type == X509_LU_X509) {
-          if ((X509_load_cert_file(xl, b->data, ent->dir_type)) == 0) {
+          if ((X509_load_cert_file(xl, b, ent->dir_type)) == 0) {
             // Don't expose the lower level error, All of these boil
             // down to "we could not find a CA".
             ERR_clear_error();
             break;
           }
         } else if (type == X509_LU_CRL) {
-          if ((X509_load_crl_file(xl, b->data, ent->dir_type)) == 0) {
+          if ((X509_load_crl_file(xl, b, ent->dir_type)) == 0) {
             // Don't expose the lower level error, All of these boil
             // down to "we could not find a CRL".
             ERR_clear_error();
@@ -347,7 +343,7 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
     }
   }
 finish:
-  BUF_MEM_free(b);
+  OPENSSL_free(b);
   return ok;
 }
 

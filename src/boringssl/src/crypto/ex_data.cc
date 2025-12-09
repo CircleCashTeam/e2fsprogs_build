@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ex_data.h>
 
@@ -17,12 +22,9 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/thread.h>
 
 #include "internal.h"
 
-
-DEFINE_STACK_OF(CRYPTO_EX_DATA_FUNCS)
 
 struct crypto_ex_data_func_st {
   long argl;   // Arbitary long
@@ -106,7 +108,7 @@ void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int idx) {
 
 void CRYPTO_new_ex_data(CRYPTO_EX_DATA *ad) { ad->sk = NULL; }
 
-void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
+void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
                          CRYPTO_EX_DATA *ad) {
   if (ad->sk == NULL) {
     // Nothing to do.
@@ -124,7 +126,8 @@ void CRYPTO_free_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class, void *obj,
     if ((*funcs)->free_func != NULL) {
       int index = (int)i + ex_data_class->num_reserved;
       void *ptr = CRYPTO_get_ex_data(ad, index);
-      (*funcs)->free_func(obj, ptr, ad, index, (*funcs)->argl, (*funcs)->argp);
+      (*funcs)->free_func(/*parent=*/nullptr, ptr, /*ad*/ nullptr, index,
+                          (*funcs)->argl, (*funcs)->argp);
     }
     funcs = &(*funcs)->next;
   }

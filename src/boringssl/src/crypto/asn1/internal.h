@@ -1,14 +1,19 @@
-/*
- * Copyright 2005-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2005-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#ifndef OPENSSL_HEADER_ASN1_INTERNAL_H
-#define OPENSSL_HEADER_ASN1_INTERNAL_H
+#ifndef OPENSSL_HEADER_CRYPTO_ASN1_INTERNAL_H
+#define OPENSSL_HEADER_CRYPTO_ASN1_INTERNAL_H
 
 #include <time.h>
 
@@ -175,6 +180,17 @@ int asn1_is_printable(uint32_t value);
 int asn1_bit_string_length(const ASN1_BIT_STRING *str,
                            uint8_t *out_padding_bits);
 
+// asn1_marshal_bit_string marshals |in| as a DER-encoded, ASN.1 BIT STRING and
+// writes the result to |out|. It returns one on success and zero on error. If
+// |tag| is non-zero, the tag is replaced with |tag|.
+int asn1_marshal_bit_string(CBB *out, const ASN1_BIT_STRING *in,
+                            CBS_ASN1_TAG tag);
+
+// asn1_marshal_integer marshals |in| as a DER-encoded, ASN.1 INTEGER and writes
+// the result to |out|. It returns one on success and zero on error. If |tag| is
+// non-zero, the tag is replaced with |tag|.
+int asn1_marshal_integer(CBB *out, const ASN1_INTEGER *in, CBS_ASN1_TAG tag);
+
 typedef struct {
   int nid;
   long minsize;
@@ -209,9 +225,26 @@ typedef struct ASN1_EXTERN_FUNCS_st {
   ASN1_ex_i2d *asn1_ex_i2d;
 } ASN1_EXTERN_FUNCS;
 
+// ASN1_TIME is an |ASN1_ITEM| whose ASN.1 type is X.509 Time (RFC 5280) and C
+// type is |ASN1_TIME*|.
+DECLARE_ASN1_ITEM(ASN1_TIME)
+
+// DIRECTORYSTRING is an |ASN1_ITEM| whose ASN.1 type is X.509 DirectoryString
+// (RFC 5280) and C type is |ASN1_STRING*|.
+DECLARE_ASN1_ITEM(DIRECTORYSTRING)
+
+// DISPLAYTEXT is an |ASN1_ITEM| whose ASN.1 type is X.509 DisplayText (RFC
+// 5280) and C type is |ASN1_STRING*|.
+DECLARE_ASN1_ITEM(DISPLAYTEXT)
+
+// ASN1_ANY_AS_STRING is an |ASN1_ITEM| with ASN.1 type ANY and C type
+// |ASN1_STRING*|. Types which are not represented with |ASN1_STRING|, such as
+// |ASN1_OBJECT|, are represented with type |V_ASN1_OTHER|.
+DECLARE_ASN1_ITEM(ASN1_ANY_AS_STRING)
+
 
 #if defined(__cplusplus)
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_ASN1_INTERNAL_H
+#endif  // OPENSSL_HEADER_CRYPTO_ASN1_INTERNAL_H

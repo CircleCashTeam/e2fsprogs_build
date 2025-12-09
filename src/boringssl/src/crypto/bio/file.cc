@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #if defined(__linux) || defined(__sun) || defined(__hpux)
 // Following definition aliases fopen to fopen64 on above mentioned
@@ -35,6 +40,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 #if defined(OPENSSL_WINDOWS)
 #include <fcntl.h>
@@ -133,24 +139,18 @@ static int file_write(BIO *b, const char *in, int inl) {
 }
 
 static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
-  long ret = 1;
-  FILE *fp = (FILE *)b->ptr;
-  FILE **fpp;
-
+  FILE *fp = static_cast<FILE *>(b->ptr);
   switch (cmd) {
     case BIO_CTRL_RESET:
       num = 0;
       [[fallthrough]];
     case BIO_C_FILE_SEEK:
-      ret = (long)fseek(fp, num, 0);
-      break;
+      return fseek(fp, num, 0);
     case BIO_CTRL_EOF:
-      ret = (long)feof(fp);
-      break;
+      return feof(fp);
     case BIO_C_FILE_TELL:
     case BIO_CTRL_INFO:
-      ret = ftell(fp);
-      break;
+      return ftell(fp);
     case BIO_C_SET_FILE_PTR:
       file_free(b);
       static_assert((BIO_CLOSE & BIO_FP_TEXT) == 0,
@@ -164,13 +164,13 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
         _setmode(_fileno(reinterpret_cast<FILE *>(ptr)), _O_TEXT);
       }
 #endif
-      b->shutdown = (int)num & BIO_CLOSE;
+      b->shutdown = static_cast<int>(num) & BIO_CLOSE;
       b->ptr = ptr;
       b->init = 1;
-      break;
+      return 1;
     case BIO_C_SET_FILENAME:
       file_free(b);
-      b->shutdown = (int)num & BIO_CLOSE;
+      b->shutdown = static_cast<int>(num) & BIO_CLOSE;
       const char *mode;
       if (num & BIO_FP_APPEND) {
         if (num & BIO_FP_READ) {
@@ -186,43 +186,35 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
         mode = "rb";
       } else {
         OPENSSL_PUT_ERROR(BIO, BIO_R_BAD_FOPEN_MODE);
-        ret = 0;
-        break;
+        return 0;
       }
       fp = fopen_if_available(reinterpret_cast<const char *>(ptr), mode);
-      if (fp == NULL) {
+      if (fp == nullptr) {
         OPENSSL_PUT_SYSTEM_ERROR();
         ERR_add_error_data(5, "fopen('", ptr, "','", mode, "')");
         OPENSSL_PUT_ERROR(BIO, ERR_R_SYS_LIB);
-        ret = 0;
-        break;
+        return 0;
       }
       b->ptr = fp;
       b->init = 1;
-      break;
+      return 1;
     case BIO_C_GET_FILE_PTR:
       // the ptr parameter is actually a FILE ** in this case.
-      if (ptr != NULL) {
-        fpp = (FILE **)ptr;
-        *fpp = (FILE *)b->ptr;
+      if (ptr != nullptr) {
+        FILE **out = static_cast<FILE **>(ptr);
+        *out = fp;
       }
-      break;
+      return 1;
     case BIO_CTRL_GET_CLOSE:
-      ret = (long)b->shutdown;
-      break;
+      return b->shutdown;
     case BIO_CTRL_SET_CLOSE:
-      b->shutdown = (int)num;
-      break;
+      b->shutdown = static_cast<int>(num);
+      return 1;
     case BIO_CTRL_FLUSH:
-      ret = 0 == fflush((FILE *)b->ptr);
-      break;
-    case BIO_CTRL_WPENDING:
-    case BIO_CTRL_PENDING:
+      return fflush(fp) == 0;
     default:
-      ret = 0;
-      break;
+      return 0;
   }
-  return ret;
 }
 
 static int file_gets(BIO *bp, char *buf, int size) {
@@ -241,11 +233,9 @@ static int file_gets(BIO *bp, char *buf, int size) {
 }
 
 static const BIO_METHOD methods_filep = {
-    BIO_TYPE_FILE,   "FILE pointer",
-    file_write,      file_read,
-    NULL /* puts */, file_gets,
-    file_ctrl,       NULL /* create */,
-    file_free,       NULL /* callback_ctrl */,
+    BIO_TYPE_FILE,      "FILE pointer", file_write,
+    file_read,          file_gets,      file_ctrl,
+    /*create=*/nullptr, file_free,      /*callback_ctrl=*/nullptr,
 };
 
 const BIO_METHOD *BIO_s_file(void) { return &methods_filep; }

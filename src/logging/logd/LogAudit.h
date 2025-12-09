@@ -44,4 +44,5 @@ class LogAudit : public SocketListener {
     std::string auditParse(const std::string& string, uid_t uid);
     int logPrint(const char* fmt, ...)
         __attribute__((__format__(__printf__, 2, 3)));
+    void logDecodedPath(const std::string& denial);
 };

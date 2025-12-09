@@ -1,11 +1,16 @@
-/*
- * Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <assert.h>
 #include <limits.h>
@@ -22,13 +27,9 @@
 #include "../aes/internal.h"
 #include "../bcm_interface.h"
 #include "../delocate.h"
-#include "../modes/internal.h"
 #include "../service_indicator/internal.h"
 #include "internal.h"
 
-
-OPENSSL_MSVC_PRAGMA(warning(push))
-OPENSSL_MSVC_PRAGMA(warning(disable : 4702))  // Unreachable code.
 
 #define AES_GCM_NONCE_LENGTH 12
 
@@ -1122,7 +1123,6 @@ struct aead_aes_gcm_tls13_ctx {
   struct aead_aes_gcm_ctx gcm_ctx;
   uint64_t min_next_nonce;
   uint64_t mask;
-  uint8_t first;
 };
 }  // namespace
 
@@ -1139,7 +1139,6 @@ static int aead_aes_gcm_tls13_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
       (struct aead_aes_gcm_tls13_ctx *)&ctx->state;
 
   gcm_ctx->min_next_nonce = 0;
-  gcm_ctx->first = 1;
 
   size_t actual_tag_len;
   if (!aead_aes_gcm_init_impl(&gcm_ctx->gcm_ctx, &actual_tag_len, key, key_len,
@@ -1170,20 +1169,20 @@ static int aead_aes_gcm_tls13_seal_scatter(
   uint64_t given_counter =
       CRYPTO_load_u64_be(nonce + nonce_len - sizeof(uint64_t));
 
-  if (gcm_ctx->first) {
+  if (gcm_ctx->min_next_nonce == 0) {
     // In the first call the sequence number will be zero and therefore the
     // given nonce will be 0 ^ mask = mask.
     gcm_ctx->mask = given_counter;
-    gcm_ctx->first = 0;
+    gcm_ctx->min_next_nonce = 1;
+  } else {
+    given_counter ^= gcm_ctx->mask;
+    if (given_counter == UINT64_MAX ||
+        given_counter < gcm_ctx->min_next_nonce) {
+      OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE);
+      return 0;
+    }
+    gcm_ctx->min_next_nonce = given_counter + 1;
   }
-  given_counter ^= gcm_ctx->mask;
-
-  if (given_counter == UINT64_MAX || given_counter < gcm_ctx->min_next_nonce) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE);
-    return 0;
-  }
-
-  gcm_ctx->min_next_nonce = given_counter + 1;
 
   if (!aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
                                  max_out_tag_len, nonce, nonce_len, in, in_len,
@@ -1234,5 +1233,3 @@ int EVP_has_aes_hardware(void) {
   return 0;
 #endif
 }
-
-OPENSSL_MSVC_PRAGMA(warning(pop))

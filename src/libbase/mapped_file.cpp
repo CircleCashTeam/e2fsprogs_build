@@ -20,12 +20,11 @@
 
 #include <errno.h>
 
-namespace android {
-namespace base {
+namespace android::base {
 
 static constexpr char kEmptyBuffer[] = {'0'};
 
-static off64_t InitPageSize() {
+static off64_t initPageSize() noexcept {
 #if defined(_WIN32)
   SYSTEM_INFO si;
   GetSystemInfo(&si);
@@ -35,18 +34,18 @@ static off64_t InitPageSize() {
 #endif
 }
 
-std::unique_ptr<MappedFile> MappedFile::FromFd(borrowed_fd fd, off64_t offset, size_t length,
-                                               int prot) {
+std::optional<MappedFile> MappedFile::Create(borrowed_fd fd, off64_t offset, size_t length,
+                                             int prot) noexcept {
 #if defined(_WIN32)
-  return FromOsHandle(reinterpret_cast<HANDLE>(_get_osfhandle(fd.get())), offset, length, prot);
+  return Create(reinterpret_cast<HANDLE>(_get_osfhandle(fd.get())), offset, length, prot);
 #else
-  return FromOsHandle(fd.get(), offset, length, prot);
+  return Create(fd.get(), offset, length, prot);
 #endif
 }
 
-std::unique_ptr<MappedFile> MappedFile::FromOsHandle(os_handle h, off64_t offset, size_t length,
-                                                     int prot) {
-  static const off64_t page_size = InitPageSize();
+std::optional<MappedFile> MappedFile::Create(os_handle h, off64_t offset, size_t length,
+                                             int prot) noexcept {
+  static const off64_t page_size = initPageSize();
   size_t slop = offset % page_size;
   off64_t file_offset = offset - slop;
   off64_t file_length = length + slop;
@@ -58,35 +57,39 @@ std::unique_ptr<MappedFile> MappedFile::FromOsHandle(os_handle h, off64_t offset
     // http://b/119818070 "app crashes when reading asset of zero length".
     // Return a MappedFile that's only valid for reading the size.
     if (length == 0 && ::GetLastError() == ERROR_FILE_INVALID) {
-      return std::unique_ptr<MappedFile>(
-          new MappedFile(const_cast<char*>(kEmptyBuffer), 0, 0, nullptr));
+      return MappedFile(const_cast<char*>(kEmptyBuffer), 0, 0, nullptr);
     }
-    return nullptr;
+    return {};
   }
   void* base = MapViewOfFile(handle, (prot & PROT_WRITE) ? FILE_MAP_ALL_ACCESS : FILE_MAP_READ,
                              (file_offset >> 32), file_offset, file_length);
   if (base == nullptr) {
     CloseHandle(handle);
-    return nullptr;
+    return {};
   }
-  return std::unique_ptr<MappedFile>(
-      new MappedFile(static_cast<char*>(base), length, slop, handle));
+  return MappedFile(static_cast<char*>(base), length, slop, handle);
 #else
   void* base = mmap(nullptr, file_length, prot, MAP_SHARED, h, file_offset);
   if (base == MAP_FAILED) {
     // http://b/119818070 "app crashes when reading asset of zero length".
     // mmap fails with EINVAL for a zero length region.
     if (errno == EINVAL && length == 0) {
-      return std::unique_ptr<MappedFile>(new MappedFile(const_cast<char*>(kEmptyBuffer), 0, 0));
+      return MappedFile(const_cast<char*>(kEmptyBuffer), 0, 0);
     }
-    return nullptr;
+    return {};
   }
-  return std::unique_ptr<MappedFile>(new MappedFile(static_cast<char*>(base), length, slop));
+  return MappedFile(static_cast<char*>(base), length, slop);
 #endif
 }
 
-MappedFile::MappedFile(MappedFile&& other)
-    : base_(std::exchange(other.base_, nullptr)),
+std::unique_ptr<MappedFile> MappedFile::FromFd(borrowed_fd fd, off64_t offset, size_t length,
+                                               int prot) {
+  auto mf = Create(fd, offset, length, prot);
+  return std::unique_ptr<MappedFile>(mf ? new MappedFile(std::move(*mf)) : nullptr);
+}
+
+MappedFile::MappedFile(MappedFile&& other) noexcept
+    : base_(std::exchange(other.base_, const_cast<char*>(kEmptyBuffer))),
       size_(std::exchange(other.size_, 0)),
       offset_(std::exchange(other.offset_, 0))
 #ifdef _WIN32
@@ -96,9 +99,9 @@ MappedFile::MappedFile(MappedFile&& other)
 {
 }
 
-MappedFile& MappedFile::operator=(MappedFile&& other) {
-  Close();
-  base_ = std::exchange(other.base_, nullptr);
+MappedFile& MappedFile::operator=(MappedFile&& other) noexcept {
+  close();
+  base_ = std::exchange(other.base_, const_cast<char*>(kEmptyBuffer));
   size_ = std::exchange(other.size_, 0);
   offset_ = std::exchange(other.offset_, 0);
 #ifdef _WIN32
@@ -107,11 +110,11 @@ MappedFile& MappedFile::operator=(MappedFile&& other) {
   return *this;
 }
 
-MappedFile::~MappedFile() {
-  Close();
+MappedFile::~MappedFile() noexcept {
+  close();
 }
 
-void MappedFile::Close() {
+void MappedFile::close() noexcept {
 #if defined(_WIN32)
   if (base_ != nullptr && size_ != 0) UnmapViewOfFile(base_);
   if (handle_ != nullptr) CloseHandle(handle_);
@@ -124,5 +127,4 @@ void MappedFile::Close() {
   offset_ = size_ = 0;
 }
 
-}  // namespace base
-}  // namespace android
+}  // namespace android::base

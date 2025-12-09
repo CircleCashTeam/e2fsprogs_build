@@ -1,11 +1,16 @@
-/*
- * Copyright 2002-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2002-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/rsa.h>
 
@@ -16,26 +21,19 @@
 
 RSA *RSA_generate_key(int bits, uint64_t e_value, void *callback,
                       void *cb_arg) {
-  assert(callback == NULL);
-  assert(cb_arg == NULL);
+  assert(callback == nullptr);
+  assert(cb_arg == nullptr);
 
-  RSA *rsa = RSA_new();
-  BIGNUM *e = BN_new();
-
-  if (rsa == NULL ||
-      e == NULL ||
-      !BN_set_u64(e, e_value) ||
-      !RSA_generate_key_ex(rsa, bits, e, NULL)) {
-    goto err;
+  bssl::UniquePtr<RSA> rsa(RSA_new());
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  if (rsa == nullptr ||  //
+      e == nullptr ||    //
+      !BN_set_u64(e.get(), e_value) ||
+      !RSA_generate_key_ex(rsa.get(), bits, e.get(), nullptr)) {
+    return nullptr;
   }
 
-  BN_free(e);
-  return rsa;
-
-err:
-  BN_free(e);
-  RSA_free(rsa);
-  return NULL;
+  return rsa.release();
 }
 
 int RSA_padding_add_PKCS1_PSS(const RSA *rsa, uint8_t *EM, const uint8_t *mHash,

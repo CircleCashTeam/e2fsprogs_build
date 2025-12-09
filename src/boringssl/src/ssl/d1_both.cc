@@ -1,11 +1,16 @@
-/*
- * Copyright 2005-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2005-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ssl.h>
 
@@ -915,11 +920,7 @@ static int send_flight(SSL *ssl) {
     }
   }
 
-  if (BIO_flush(ssl->wbio.get()) <= 0) {
-    ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
-    return -1;
-  }
-
+  ssl->d1->pending_flush = true;
   return 1;
 }
 
@@ -1010,11 +1011,7 @@ static int send_ack(SSL *ssl) {
     return bio_ret;
   }
 
-  if (BIO_flush(ssl->wbio.get()) <= 0) {
-    ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
-    return -1;
-  }
-
+  ssl->d1->pending_flush = true;
   return 1;
 }
 
@@ -1055,6 +1052,14 @@ int dtls1_flush(SSL *ssl) {
       ssl->d1->retransmit_timer.StartMicroseconds(
           now, uint64_t{ssl->d1->timeout_duration_ms} * 1000);
     }
+  }
+
+  if (ssl->d1->pending_flush) {
+    if (BIO_flush(ssl->wbio.get()) <= 0) {
+      ssl->s3->rwstate = SSL_ERROR_WANT_WRITE;
+      return -1;
+    }
+    ssl->d1->pending_flush = false;
   }
 
   return 1;

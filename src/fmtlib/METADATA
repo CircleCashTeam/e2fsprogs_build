@@ -17,4 +17,7 @@ third_party {
     value: "https://github.com/fmtlib/fmt.git"
     version: "4046f9727892a9a1baeef00cb20211ee062efa16"
   }
+  security: {
+    tag: "NVD-CPE2.3:cpe:/a:fmt:fmt:11.0.2"
+  }
 }

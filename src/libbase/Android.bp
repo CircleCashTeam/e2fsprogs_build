@@ -38,6 +38,9 @@ cc_defaults {
         "-Werror",
         "-Wextra",
     ],
+    sanitize: {
+        misc_undefined: ["integer"],
+    },
     target: {
         android: {
             cflags: [
@@ -86,7 +89,6 @@ cc_defaults {
     name: "libbase_defaults",
     defaults: ["libbase_cflags_defaults"],
     srcs: [
-        "abi_compatibility.cpp",
         "chrono_utils.cpp",
         "cmsg.cpp",
         "file.cpp",
@@ -108,12 +110,6 @@ cc_defaults {
     cppflags: ["-Wexit-time-destructors"],
     shared_libs: ["liblog"],
     target: {
-        android: {
-            sanitize: {
-                misc_undefined: ["integer"],
-            },
-
-        },
         linux: {
             srcs: [
                 "errors_unix.cpp",
@@ -206,17 +202,13 @@ cc_test {
         "properties_test.cpp",
         "result_test.cpp",
         "scopeguard_test.cpp",
+        "stringify_test.cpp",
         "stringprintf_test.cpp",
         "strings_test.cpp",
         "test_main.cpp",
         "test_utils_test.cpp",
     ],
     target: {
-        android: {
-            sanitize: {
-                misc_undefined: ["integer"],
-            },
-        },
         linux: {
             srcs: ["chrono_utils_test.cpp"],
         },
@@ -261,6 +253,7 @@ cc_test {
 cc_benchmark {
     name: "libbase_benchmark",
     defaults: ["libbase_cflags_defaults"],
+    host_supported: true,
 
     srcs: [
         "file_benchmark.cpp",

@@ -167,3 +167,102 @@ TEST(liblog, log_print_different_header_size) {
   ASSERT_EQ(0, android_log_processLogBuffer(reinterpret_cast<logger_entry*>(buf), &entry_odd_size));
   check_entry(entry_odd_size);
 }
+
+#define TAG "InetDiagMessage"
+#define MSG "Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14"
+
+static std::string FormatToString(const char* tag,
+                                  const char* msg,
+                                  const std::vector<std::string>& formats) {
+  setenv("TZ", "UTC", 1);
+  tzset();
+
+  AndroidLogEntry entry;
+  entry.tv_sec = entry.tv_nsec = 0;
+  entry.priority = ANDROID_LOG_ERROR;
+  entry.uid = entry.pid = entry.tid = 1234;
+  entry.tag = tag;
+  entry.tagLen = strlen(entry.tag);
+  entry.message = msg;
+  entry.messageLen = strlen(entry.message);
+
+  AndroidLogFormat* formatter = android_log_format_new();
+  for (const auto& format : formats) {
+    android_log_setPrintFormat(formatter, android_log_formatFromString(format.c_str()));
+  }
+
+  char buf[BUFSIZ];
+  size_t out_length;
+  char* ptr = android_log_formatLogLine(formatter, buf, sizeof(buf), &entry, &out_length);
+  return std::string(ptr, out_length);
+}
+
+TEST(liblog, android_log_formatLogLine_brief) {
+  EXPECT_EQ("E/" TAG "( 1234): " MSG "\n", FormatToString(TAG, MSG, {"brief"}));
+}
+
+TEST(liblog, android_log_formatLogLine_process) {
+  EXPECT_EQ("E( 1234) " MSG "  (" TAG ")\n", FormatToString(TAG, MSG, {"process"}));
+}
+
+TEST(liblog, android_log_formatLogLine_tag) {
+  EXPECT_EQ("E/" TAG ": " MSG "\n", FormatToString(TAG, MSG, {"tag"}));
+}
+
+TEST(liblog, android_log_formatLogLine_thread) {
+  EXPECT_EQ("E( 1234: 1234) " MSG "\n", FormatToString(TAG, MSG, {"thread"}));
+}
+
+TEST(liblog, android_log_formatLogLine_raw) {
+  EXPECT_EQ(MSG "\n", FormatToString(TAG, MSG, {"raw"}));
+}
+
+TEST(liblog, android_log_formatLogLine_time) {
+  EXPECT_EQ("01-01 00:00:00.000 E/" TAG "( 1234): " MSG "\n",
+            FormatToString(TAG, MSG, {"time"}));
+}
+
+TEST(liblog, android_log_formatLogLine_threadtime) {
+  EXPECT_EQ("01-01 00:00:00.000  1234  1234 E " TAG ": " MSG "\n",
+            FormatToString(TAG, MSG, {"threadtime"}));
+}
+
+TEST(liblog, android_log_formatLogLine_long) {
+  EXPECT_EQ("[ 01-01 00:00:00.000  1234: 1234 E/" TAG " ]\n" MSG "\n\n",
+            FormatToString(TAG, MSG, {"long"}));
+}
+
+TEST(liblog, android_log_formatLogLine_color) {
+  EXPECT_EQ("\x1B[31mE/" TAG "( 1234): " MSG "\x1B[0m\n",
+            FormatToString(TAG, MSG, {"color"}));
+}
+
+TEST(liblog, android_log_formatLogLine_usec) {
+  EXPECT_EQ("01-01 00:00:00.000000 E/" TAG "( 1234): " MSG "\n",
+            FormatToString(TAG, MSG, {"time", "usec"}));
+}
+
+TEST(liblog, android_log_formatLogLine_nsec) {
+  EXPECT_EQ("01-01 00:00:00.000000000 E/" TAG "( 1234): " MSG "\n",
+            FormatToString(TAG, MSG, {"time", "nsec"}));
+}
+
+TEST(liblog, android_log_formatLogLine_printable) {
+  EXPECT_EQ("E/a\tb     : a\\bb\\x03\n",
+            FormatToString("a\tb", "a\bb\x03", {"tag", "printable"}));
+}
+
+TEST(liblog, android_log_formatLogLine_year) {
+  EXPECT_EQ("1970-01-01 00:00:00.000 E/" TAG "( 1234): " MSG "\n",
+            FormatToString(TAG, MSG, {"time", "year"}));
+}
+
+TEST(liblog, android_log_formatLogLine_zone) {
+  EXPECT_EQ("01-01 00:00:00.000 +0000 E/" TAG "( 1234): " MSG "\n",
+            FormatToString(TAG, MSG, {"time", "zone"}));
+}
+
+TEST(liblog, android_log_formatLogLine_epoch) {
+  EXPECT_EQ("                  0.000 E/" TAG "( 1234): " MSG "\n",
+            FormatToString(TAG, MSG, {"time", "epoch"}));
+}

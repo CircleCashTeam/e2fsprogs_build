@@ -1,6 +1,8 @@
 set(target_name "selinux")
 
-set(target_cflags
+set(target_dir "${CMAKE_SOURCE_DIR}/src/selinux/libselinux")
+
+set(cflags
     "-DNO_PERSISTENTLY_STORED_PATTERNS"
     "-DDISABLE_SETRANS"
     "-DDISABLE_BOOL"
@@ -14,12 +16,19 @@ set(target_cflags
     "-Wno-error=unused-variable"
     "-Wno-error=unused-but-set-variable"
     "-DUSE_PCRE2"
-    # 1003 corresponds to auditd, from system/core/logd/event.logtags
+    # 1003 corresponds to auditd from system/core/logd/event.logtags
     "-DAUDITD_LOG_TAG=1003"
 )
-list(APPEND target_cflags "-DBUILD_HOST")
-list(APPEND target_srcs "src/android/android_device.c")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    list(APPEND target_srcs "src/android/android_device.c")
+    list(APPEND cflags 
+        "-DHAVE_STRLCPY"
+        "-DHAVE_REALLOCARRAY"
+    )
+else()
+    list(APPEND cflags "-DBUILD_HOST")
+endif()
 include(CheckFunctionExists)
 check_function_exists(reallocarray HAVE_REALLOCARRAY)
 check_function_exists(strlcpy HAVE_STRLCPY)
@@ -29,10 +38,6 @@ endif()
 if(HAVE_STRLCPY)
     list(APPEND target_cflags "-DHAVE_STRLCPY")
 endif()
-
-set(target_dir
-    ${CMAKE_SOURCE_DIR}/src/selinux/libselinux
-)
 
 set(target_srcs
         "${target_dir}/src/android/android.c"
@@ -84,17 +89,20 @@ set(target_srcs
 )
 
 add_library(${target_name} STATIC ${target_srcs})
-target_compile_options(${target_name} PRIVATE ${target_cflags})
-target_include_directories(${target_name} PRIVATE
+target_compile_options(${target_name} PRIVATE ${cflags})
+target_include_directories(${target_name} PUBLIC
     ${libbase_headers}
     ${libcutils_headers}
     ${liblog_headers}
     ${libpcre2_headers}
     ${libsepol_headers}
     ${libselinux_headers}
-    ${target_dir}/src
+    PRIVATE "${target_dir}/src"
 )
-target_link_libraries(${target_name} PRIVATE 
+target_link_libraries(${target_name} PUBLIC 
     pcre2
     log
 )
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_options(${target_name} PRIVATE "-Wl,--dynamic-list=${target_dir}/exported.map.txt")
+endif()

@@ -16,6 +16,8 @@
 
 #include "android-base/format.h"
 
+#include <unistd.h>
+
 #include <limits>
 
 #include <benchmark/benchmark.h>
@@ -24,57 +26,74 @@
 
 using android::base::StringPrintf;
 
-static void BenchmarkFormatInt(benchmark::State& state) {
+static pid_t pid = getpid();
+static int fd = 123;
+
+static void BM_format_fmt_format_ints(benchmark::State& state) {
   for (auto _ : state) {
-    benchmark::DoNotOptimize(fmt::format("{} {} {}", 42, std::numeric_limits<int>::min(),
-                                         std::numeric_limits<int>::max()));
+    benchmark::DoNotOptimize(fmt::format("/proc/{}/fd/{}", pid, fd));
   }
 }
+BENCHMARK(BM_format_fmt_format_ints);
 
-BENCHMARK(BenchmarkFormatInt);
-
-static void BenchmarkStringPrintfInt(benchmark::State& state) {
+static void BM_format_std_format_ints(benchmark::State& state) {
   for (auto _ : state) {
-    benchmark::DoNotOptimize(StringPrintf("%d %d %d", 42, std::numeric_limits<int>::min(),
-                                          std::numeric_limits<int>::max()));
+    benchmark::DoNotOptimize(std::format("/proc/{}/fd/{}", pid, fd));
   }
 }
+BENCHMARK(BM_format_std_format_ints);
 
-BENCHMARK(BenchmarkStringPrintfInt);
+static void BM_format_StringPrintf_ints(benchmark::State& state) {
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(StringPrintf("/proc/%d/fd/%d", pid, fd));
+  }
+}
+BENCHMARK(BM_format_StringPrintf_ints);
 
-static void BenchmarkFormatFloat(benchmark::State& state) {
+static void BM_format_fmt_format_floats(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(fmt::format("{} {} {}", 42.42, std::numeric_limits<float>::min(),
                                          std::numeric_limits<float>::max()));
   }
 }
+BENCHMARK(BM_format_fmt_format_floats);
 
-BENCHMARK(BenchmarkFormatFloat);
+static void BM_format_std_format_floats(benchmark::State& state) {
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(std::format("{} {} {}", 42.42, std::numeric_limits<float>::min(),
+                                         std::numeric_limits<float>::max()));
+  }
+}
+BENCHMARK(BM_format_std_format_floats);
 
-static void BenchmarkStringPrintfFloat(benchmark::State& state) {
+static void BM_format_StringPrintf_floats(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(StringPrintf("%f %f %f", 42.42, std::numeric_limits<float>::min(),
                                           std::numeric_limits<float>::max()));
   }
 }
+BENCHMARK(BM_format_StringPrintf_floats);
 
-BENCHMARK(BenchmarkStringPrintfFloat);
-
-static void BenchmarkFormatStrings(benchmark::State& state) {
+static void BM_format_fmt_format_strings(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(fmt::format("{} hello there {}", "hi,", "!!"));
   }
 }
+BENCHMARK(BM_format_fmt_format_strings);
 
-BENCHMARK(BenchmarkFormatStrings);
+static void BM_format_std_format_strings(benchmark::State& state) {
+  for (auto _ : state) {
+    benchmark::DoNotOptimize(std::format("{} hello there {}", "hi,", "!!"));
+  }
+}
+BENCHMARK(BM_format_std_format_strings);
 
-static void BenchmarkStringPrintfStrings(benchmark::State& state) {
+static void BM_format_StringPrintf_strings(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(StringPrintf("%s hello there %s", "hi,", "!!"));
   }
 }
-
-BENCHMARK(BenchmarkStringPrintfStrings);
+BENCHMARK(BM_format_StringPrintf_strings);
 
 // Run the benchmark
 BENCHMARK_MAIN();

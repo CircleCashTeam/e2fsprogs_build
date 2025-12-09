@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <IOUringSocketHandler/IOUringSocketHandler.h>
+
 #include "LogBuffer.h"
 
 class LogListener {
@@ -25,9 +27,12 @@ class LogListener {
 
   private:
     void ThreadFunction();
-    void HandleData();
     static int GetLogSocket();
-
+    void HandleDataUring();
+    void HandleDataSync();
+    void ProcessBuffer(struct ucred* cred, void* buffer, ssize_t n);
+    bool InitializeUring();
+    std::unique_ptr<IOUringSocketHandler> uring_listener_;
     int socket_;
     LogBuffer* logbuf_;
 };

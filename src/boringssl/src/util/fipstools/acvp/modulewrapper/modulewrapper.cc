@@ -1,20 +1,21 @@
-/* Copyright 2019 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2019 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <assert.h>
@@ -441,9 +442,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [{
           "min": 8, "max": 524288, "increment": 8
         }],
-        "macLen": [{
-          "min": 32, "max": 160, "increment": 8
-        }]
+        "macLen": [160]
       },
       {
         "algorithm": "HMAC-SHA2-224",
@@ -451,9 +450,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [{
           "min": 8, "max": 524288, "increment": 8
         }],
-        "macLen": [{
-          "min": 32, "max": 224, "increment": 8
-        }]
+        "macLen": [224]
       },
       {
         "algorithm": "HMAC-SHA2-256",
@@ -461,9 +458,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [{
           "min": 8, "max": 524288, "increment": 8
         }],
-        "macLen": [{
-          "min": 32, "max": 256, "increment": 8
-        }]
+        "macLen": [256]
       },
       {
         "algorithm": "HMAC-SHA2-384",
@@ -471,9 +466,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [{
           "min": 8, "max": 524288, "increment": 8
         }],
-        "macLen": [{
-          "min": 32, "max": 384, "increment": 8
-        }]
+        "macLen": [384]
       },
       {
         "algorithm": "HMAC-SHA2-512",
@@ -481,9 +474,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [{
           "min": 8, "max": 524288, "increment": 8
         }],
-        "macLen": [{
-          "min": 32, "max": 512, "increment": 8
-        }]
+        "macLen": [512]
       },
       {
         "algorithm": "HMAC-SHA2-512/256",
@@ -491,9 +482,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "keyLen": [{
           "min": 8, "max": 524288, "increment": 8
         }],
-        "macLen": [{
-          "min": 32, "max": 256, "increment": 8
-        }]
+        "macLen": [256]
       },
       {
         "algorithm": "ctrDRBG",
@@ -501,6 +490,16 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "predResistanceEnabled": [false],
         "reseedImplemented": true,
         "capabilities": [{
+          "mode": "AES-256",
+          "derFuncEnabled": true,
+          "entropyInputLen": [{"min": 256, "max": 512, "increment": 16}],
+          "nonceLen": [128],
+          "persoStringLen": [{"min": 0, "max": 384, "increment": 16}],
+          "additionalInputLen": [
+            {"min": 0, "max": 384, "increment": 16}
+          ],
+          "returnedBitsLen": 2048
+        }, {
           "mode": "AES-256",
           "derFuncEnabled": false,
           "entropyInputLen": [384],
@@ -847,11 +846,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "increment": 8
           }],
           "keyLen": [128, 256],
-          "macLen": [{
-            "min": 8,
-            "max": 128,
-            "increment": 8
-          }]
+          "macLen": [128]
         }]
       },
       {
@@ -950,6 +945,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         "mode": "keyGen",
         "revision": "FIPS204",
         "parameterSets": [
+          "ML-DSA-44",
           "ML-DSA-65",
           "ML-DSA-87"
         ]
@@ -968,6 +964,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         ],
         "capabilities": [{
           "parameterSets": [
+            "ML-DSA-44",
             "ML-DSA-65",
             "ML-DSA-87"
           ],
@@ -990,6 +987,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
             "increment": 8
           }],
           "parameterSets": [
+            "ML-DSA-44",
             "ML-DSA-65",
             "ML-DSA-87"
           ]
@@ -1074,8 +1072,7 @@ static bool GetConfig(const Span<const uint8_t> args[],
         ]
       }
     ])";
-  return write_reply({Span<const uint8_t>(
-      reinterpret_cast<const uint8_t *>(kConfig), sizeof(kConfig) - 1)});
+  return write_reply({bssl::StringAsBytes(kConfig)});
 }
 
 static bool Flush(const Span<const uint8_t> args[], ReplyCallback write_reply) {
@@ -1114,8 +1111,7 @@ static bool HashMCT(const Span<const uint8_t> args[],
     memcpy(buf + DigestLength * 2, digest, DigestLength);
   }
 
-  return write_reply(
-      {Span<const uint8_t>(buf + 2 * DigestLength, DigestLength)});
+  return write_reply({Span(buf).subspan(2 * DigestLength, DigestLength)});
 }
 
 static uint32_t GetIterations(const Span<const uint8_t> iterations_bytes) {
@@ -1759,11 +1755,12 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
 
   uint32_t out_len;
   if (out_len_bytes.size() != sizeof(out_len) ||
-      entropy.size() != CTR_DRBG_ENTROPY_LEN ||
+      entropy.size() < CTR_DRBG_MIN_ENTROPY_LEN ||
+      entropy.size() > CTR_DRBG_MAX_ENTROPY_LEN ||
       (!reseed_entropy.empty() &&
-       reseed_entropy.size() != CTR_DRBG_ENTROPY_LEN) ||
-      // nonces are not supported
-      nonce.size() != 0) {
+       (reseed_entropy.size() < CTR_DRBG_MIN_ENTROPY_LEN ||
+        reseed_entropy.size() > CTR_DRBG_MAX_ENTROPY_LEN)) ||
+      (nonce.size() != CTR_DRBG_NONCE_LEN && nonce.size() != 0)) {
     return false;
   }
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
@@ -1773,12 +1770,13 @@ static bool DRBG(const Span<const uint8_t> args[], ReplyCallback write_reply) {
   std::vector<uint8_t> out(out_len);
 
   CTR_DRBG_STATE drbg;
-  if (!CTR_DRBG_init(&drbg, entropy.data(), personalisation.data(),
-                     personalisation.size()) ||
+  if (!CTR_DRBG_init(&drbg, /*df=*/nonce.size() != 0, entropy.data(),
+                     entropy.size(), nonce.empty() ? nullptr : nonce.data(),
+                     personalisation.data(), personalisation.size()) ||
       (!reseed_entropy.empty() &&
-       !CTR_DRBG_reseed(&drbg, reseed_entropy.data(),
-                        reseed_additional_data.data(),
-                        reseed_additional_data.size())) ||
+       !CTR_DRBG_reseed_ex(&drbg, reseed_entropy.data(), reseed_entropy.size(),
+                           reseed_additional_data.data(),
+                           reseed_additional_data.size())) ||
       !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data1.data(),
                          additional_data1.size()) ||
       !CTR_DRBG_generate(&drbg, out.data(), out_len, additional_data2.data(),
@@ -1967,11 +1965,11 @@ static bool CMAC_AES(const Span<const uint8_t> args[],
     return false;
   }
   memcpy(&mac_len, args[0].data(), sizeof(mac_len));
-  if (mac_len > sizeof(mac)) {
+  if (mac_len != sizeof(mac)) {
     return false;
   }
 
-  return write_reply({Span<const uint8_t>(mac, mac_len)});
+  return write_reply({Span<const uint8_t>(mac, sizeof(mac))});
 }
 
 static bool CMAC_AESVerify(const Span<const uint8_t> args[],
@@ -2060,7 +2058,7 @@ static bool RSASigGen(const Span<const uint8_t> args[],
   size_t sig_len;
   if (UsePSS) {
     if (!RSA_sign_pss_mgf1(key, &sig_len, sig.data(), sig.size(), digest_buf,
-                           digest_len, md, md, -1)) {
+                           digest_len, md, md, RSA_PSS_SALTLEN_DIGEST)) {
       return false;
     }
   } else {
@@ -2104,8 +2102,8 @@ static bool RSASigVer(const Span<const uint8_t> args[],
 
   uint8_t ok;
   if (UsePSS) {
-    ok = RSA_verify_pss_mgf1(key.get(), digest_buf, digest_len, md, md, -1,
-                             sig.data(), sig.size());
+    ok = RSA_verify_pss_mgf1(key.get(), digest_buf, digest_len, md, md,
+                             RSA_PSS_SALTLEN_DIGEST, sig.data(), sig.size());
   } else {
     ok = RSA_verify(EVP_MD_type(md), digest_buf, digest_len, sig.data(),
                     sig.size(), key.get());
@@ -2120,7 +2118,7 @@ static bool TLSKDF(const Span<const uint8_t> args[],
                    ReplyCallback write_reply) {
   const Span<const uint8_t> out_len_bytes = args[0];
   const Span<const uint8_t> secret = args[1];
-  const Span<const uint8_t> label = args[2];
+  const std::string_view label = bssl::BytesAsStringView(args[2]);
   const Span<const uint8_t> seed1 = args[3];
   const Span<const uint8_t> seed2 = args[4];
   const EVP_MD *md = MDFunc();
@@ -2131,11 +2129,10 @@ static bool TLSKDF(const Span<const uint8_t> args[],
   }
   memcpy(&out_len, out_len_bytes.data(), sizeof(out_len));
 
-  std::vector<uint8_t> out(static_cast<size_t>(out_len));
+  std::vector<uint8_t> out(size_t{out_len});
   if (!CRYPTO_tls1_prf(md, out.data(), out.size(), secret.data(), secret.size(),
-                       reinterpret_cast<const char *>(label.data()),
-                       label.size(), seed1.data(), seed1.size(), seed2.data(),
-                       seed2.size())) {
+                       label.data(), label.size(), seed1.data(), seed1.size(),
+                       seed2.data(), seed2.size())) {
     return 0;
   }
 
@@ -2278,7 +2275,7 @@ static bool MLDSAKeyGen(const Span<const uint8_t> args[],
   }
 
   return write_reply(
-      {pub_key_bytes, MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get()))});
+      {pub_key_bytes, Span(CBB_data(cbb.get()), CBB_len(cbb.get()))});
 }
 
 template <typename PrivateKey, size_t SignatureBytes,
@@ -2289,7 +2286,7 @@ template <typename PrivateKey, size_t SignatureBytes,
                                      const uint8_t *)>
 static bool MLDSASigGen(const Span<const uint8_t> args[],
                         ReplyCallback write_reply) {
-  CBS cbs = bssl::MakeConstSpan(args[0]);
+  CBS cbs = args[0];
   auto priv = std::make_unique<PrivateKey>();
   if (ParsePrivateKey(priv.get(), &cbs) != bcm_status::approved) {
     LOG_ERROR("Failed to parse ML-DSA private key.\n");
@@ -2328,7 +2325,7 @@ static bool MLDSASigVer(const Span<const uint8_t> args[],
   const Span<const uint8_t> msg = args[1];
   const Span<const uint8_t> signature = args[2];
 
-  CBS cbs = bssl::MakeConstSpan(pub_key_bytes);
+  CBS cbs = pub_key_bytes;
   auto pub = std::make_unique<PublicKey>();
   if (ParsePublicKey(pub.get(), &cbs) != bcm_status::approved) {
     LOG_ERROR("Failed to parse ML-DSA public key.\n");
@@ -2372,7 +2369,7 @@ static bool MLKEMKeyGen(const Span<const uint8_t> args[],
   }
 
   return write_reply(
-      {pub_key_bytes, MakeConstSpan(CBB_data(cbb.get()), CBB_len(cbb.get()))});
+      {pub_key_bytes, Span(CBB_data(cbb.get()), CBB_len(cbb.get()))});
 }
 
 template <typename PublicKey, bcm_status (*ParsePublic)(PublicKey *, CBS *),
@@ -2390,7 +2387,7 @@ static bool MLKEMEncap(const Span<const uint8_t> args[],
   }
 
   auto pub = std::make_unique<PublicKey>();
-  CBS cbs = bssl::MakeConstSpan(pub_key_bytes);
+  CBS cbs = pub_key_bytes;
   if (!bcm_success(ParsePublic(pub.get(), &cbs)) || CBS_len(&cbs) != 0) {
     LOG_ERROR("Failed to parse public key.\n");
     return false;
@@ -2412,7 +2409,7 @@ static bool MLKEMDecap(const Span<const uint8_t> args[],
   const Span<const uint8_t> ciphertext = args[1];
 
   auto priv = std::make_unique<PrivateKey>();
-  CBS cbs = bssl::MakeConstSpan(priv_key_bytes);
+  CBS cbs = priv_key_bytes;
   if (!bcm_success(ParsePrivate(priv.get(), &cbs))) {
     LOG_ERROR("Failed to parse private key.\n");
     return false;
@@ -2587,6 +2584,10 @@ static constexpr struct {
     {"ECDH/P-384", 3, ECDH<NID_secp384r1>},
     {"ECDH/P-521", 3, ECDH<NID_secp521r1>},
     {"FFDH", 6, FFDH},
+    {"ML-DSA-44/keyGen", 1,
+     MLDSAKeyGen<BCM_mldsa44_private_key, BCM_MLDSA44_PUBLIC_KEY_BYTES,
+                 BCM_mldsa44_generate_key_external_entropy_fips,
+                 BCM_mldsa44_marshal_private_key>},
     {"ML-DSA-65/keyGen", 1,
      MLDSAKeyGen<BCM_mldsa65_private_key, BCM_MLDSA65_PUBLIC_KEY_BYTES,
                  BCM_mldsa65_generate_key_external_entropy_fips,
@@ -2595,12 +2596,18 @@ static constexpr struct {
      MLDSAKeyGen<BCM_mldsa87_private_key, BCM_MLDSA87_PUBLIC_KEY_BYTES,
                  BCM_mldsa87_generate_key_external_entropy_fips,
                  BCM_mldsa87_marshal_private_key>},
+    {"ML-DSA-44/sigGen", 3,
+     MLDSASigGen<BCM_mldsa44_private_key, BCM_MLDSA44_SIGNATURE_BYTES,
+                 BCM_mldsa44_parse_private_key, BCM_mldsa44_sign_internal>},
     {"ML-DSA-65/sigGen", 3,
      MLDSASigGen<BCM_mldsa65_private_key, BCM_MLDSA65_SIGNATURE_BYTES,
                  BCM_mldsa65_parse_private_key, BCM_mldsa65_sign_internal>},
     {"ML-DSA-87/sigGen", 3,
      MLDSASigGen<BCM_mldsa87_private_key, BCM_MLDSA87_SIGNATURE_BYTES,
                  BCM_mldsa87_parse_private_key, BCM_mldsa87_sign_internal>},
+    {"ML-DSA-44/sigVer", 3,
+     MLDSASigVer<BCM_mldsa44_public_key, BCM_MLDSA44_SIGNATURE_BYTES,
+                 BCM_mldsa44_parse_public_key, BCM_mldsa44_verify_internal>},
     {"ML-DSA-65/sigVer", 3,
      MLDSASigVer<BCM_mldsa65_public_key, BCM_MLDSA65_SIGNATURE_BYTES,
                  BCM_mldsa65_parse_public_key, BCM_mldsa65_verify_internal>},
@@ -2635,10 +2642,9 @@ static constexpr struct {
 };
 
 Handler FindHandler(Span<const Span<const uint8_t>> args) {
-  const bssl::Span<const uint8_t> algorithm = args[0];
+  auto algorithm = bssl::BytesAsStringView(args[0]);
   for (const auto &func : kFunctions) {
-    if (algorithm.size() == strlen(func.name) &&
-        memcmp(algorithm.data(), func.name, algorithm.size()) == 0) {
+    if (algorithm == func.name) {
       if (args.size() - 1 != func.num_expected_args) {
         LOG_ERROR("\'%s\' operation received %zu arguments but expected %u.\n",
                   func.name, args.size() - 1, func.num_expected_args);
@@ -2649,9 +2655,7 @@ Handler FindHandler(Span<const Span<const uint8_t>> args) {
     }
   }
 
-  const std::string name(reinterpret_cast<const char *>(algorithm.data()),
-                         algorithm.size());
-  LOG_ERROR("Unknown operation: %s\n", name.c_str());
+  LOG_ERROR("Unknown operation: %s\n", std::string(algorithm).c_str());
   return nullptr;
 }
 

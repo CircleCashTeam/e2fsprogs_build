@@ -446,23 +446,21 @@ bool RemoveFileIfExists(const std::string& path, std::string* err) {
 bool Readlink(const std::string& path, std::string* result) {
   result->clear();
 
-  // Most Linux file systems (ext2 and ext4, say) limit symbolic links to
-  // 4095 bytes. Since we'll copy out into the string anyway, it doesn't
-  // waste memory to just start there. We add 1 so that we can recognize
-  // whether it actually fit (rather than being truncated to 4095).
-  std::vector<char> buf(4095 + 1);
-  while (true) {
-    ssize_t size = readlink(path.c_str(), &buf[0], buf.size());
-    // Unrecoverable error?
-    if (size == -1) return false;
-    // It fit! (If size == buf.size(), it may have been truncated.)
-    if (static_cast<size_t>(size) < buf.size()) {
-      result->assign(&buf[0], size);
-      return true;
-    }
-    // Double our buffer and try again.
-    buf.resize(buf.size() * 2);
-  }
+  // Linux limits symlinks to PATH_MAX on creation (symlink() and symlinkat() both call getname()
+  // on both the "to" and "from" names, which calls getname_flags(), which enforces that limit).
+  // The check in getname_flags() _includes_ space for a terminating '\0' -- though we don't need
+  // one because we're using C++ strings -- and readlink() doesn't terminate strings, so we know
+  // that readlink() into a buffer of size PATH_MAX must fit.
+  // Experimentation on macOS 15.6 suggests that their kernel's limit is 1023 bytes,
+  // which is one byte shorter than their PATH_MAX of 1024.
+  char buf[PATH_MAX] __attribute__((__uninitialized__));
+  ssize_t size = readlink(path.c_str(), &buf[0], sizeof(buf));
+  // Unrecoverable error?
+  if (size == -1) return false;
+  // Insurance in case the kernel ever changes...
+  if (static_cast<size_t>(size) >= sizeof(buf)) abort();
+  result->assign(&buf[0], size);
+  return true;
 }
 #endif
 

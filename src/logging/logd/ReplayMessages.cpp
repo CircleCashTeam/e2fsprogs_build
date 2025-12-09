@@ -405,9 +405,9 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Couldn't fstat input file\n");
         return 1;
     }
-    auto recorded_messages = MappedFile::FromFd(recorded_messages_fd, 0,
+    auto recorded_messages = MappedFile::Create(recorded_messages_fd, 0,
                                                 static_cast<size_t>(fd_stat.st_size), PROT_READ);
-    if (recorded_messages == nullptr) {
+    if (!recorded_messages) {
         fprintf(stderr, "Couldn't mmap input file\n");
         return 1;
     }

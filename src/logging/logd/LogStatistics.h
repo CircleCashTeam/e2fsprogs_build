@@ -23,8 +23,9 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include <algorithm>  // std::max
+#include <algorithm>
 #include <array>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>

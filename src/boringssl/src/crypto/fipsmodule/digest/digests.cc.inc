@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/digest.h>
 
@@ -49,6 +54,8 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha1) {
   out->ctx_size = sizeof(SHA_CTX);
 }
 
+static_assert(sizeof(SHA_CTX) <= EVP_MAX_MD_DATA_SIZE);
+
 
 static void sha224_init(EVP_MD_CTX *ctx) {
   BCM_sha224_init(reinterpret_cast<SHA256_CTX *>(ctx->md_data));
@@ -73,6 +80,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha224) {
   out->ctx_size = sizeof(SHA256_CTX);
 }
 
+static_assert(sizeof(SHA256_CTX) <= EVP_MAX_MD_DATA_SIZE);
 
 static void sha256_init(EVP_MD_CTX *ctx) {
   BCM_sha256_init(reinterpret_cast<SHA256_CTX *>(ctx->md_data));
@@ -121,6 +129,7 @@ DEFINE_METHOD_FUNCTION(EVP_MD, EVP_sha384) {
   out->ctx_size = sizeof(SHA512_CTX);
 }
 
+static_assert(sizeof(SHA512_CTX) <= EVP_MAX_MD_DATA_SIZE);
 
 static void sha512_init(EVP_MD_CTX *ctx) {
   BCM_sha512_init(reinterpret_cast<SHA512_CTX *>(ctx->md_data));

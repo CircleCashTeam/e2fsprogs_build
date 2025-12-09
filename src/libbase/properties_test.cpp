@@ -294,9 +294,10 @@ void SetAfter(const std::string& key, const std::string& value, std::chrono::mil
 
 TEST(properties, CachedProperty_WaitForChange) {
 #if defined(__BIONIC__)
-  unsigned long now =
-      std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
-  std::string key = android::base::StringPrintf("debug.libbase.CachedProperty_test_%lu", now);
+  size_t now = static_cast<size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       std::chrono::system_clock::now().time_since_epoch())
+                                       .count());
+  std::string key = android::base::StringPrintf("debug.libbase.CachedProperty_test_%zu", now);
   android::base::CachedProperty cached_property(key);
 
   // If the property doesn't exist yet, Get returns the empty string.
@@ -324,9 +325,10 @@ TEST(properties, CachedProperty_WaitForChange) {
 
 TEST(properties, CachedBoolProperty) {
 #if defined(__BIONIC__)
-  unsigned long now =
-      std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
-  std::string key = android::base::StringPrintf("debug.libbase.CachedBoolProperty_test_%lu", now);
+  size_t now = static_cast<size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       std::chrono::system_clock::now().time_since_epoch())
+                                       .count());
+  std::string key = android::base::StringPrintf("debug.libbase.CachedBoolProperty_test_%zu", now);
   android::base::CachedBoolProperty cached_bool_property(key);
 
   // Not set yet.

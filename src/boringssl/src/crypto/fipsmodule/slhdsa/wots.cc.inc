@@ -1,16 +1,16 @@
-/* Copyright 2024 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2024 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/base.h>
 
@@ -85,7 +85,7 @@ void slhdsa_wots_sign(uint8_t sig[SLHDSA_SHA2_128S_WOTS_BYTES],
                       const uint8_t pub_seed[BCM_SLHDSA_SHA2_128S_N],
                       uint8_t addr[32]) {
   // Compute checksum
-  static_assert(SLHDSA_SHA2_128S_WOTS_LEN1 == BCM_SLHDSA_SHA2_128S_N * 2, "");
+  static_assert(SLHDSA_SHA2_128S_WOTS_LEN1 == BCM_SLHDSA_SHA2_128S_N * 2);
   uint16_t csum = 0;
   for (size_t i = 0; i < BCM_SLHDSA_SHA2_128S_N; ++i) {
     csum += SLHDSA_SHA2_128S_WOTS_W - 1 - (msg[i] >> 4);
@@ -137,7 +137,7 @@ void slhdsa_wots_pk_from_sig(uint8_t pk[BCM_SLHDSA_SHA2_128S_N],
                              const uint8_t pub_seed[BCM_SLHDSA_SHA2_128S_N],
                              uint8_t addr[32]) {
   // Compute checksum
-  static_assert(SLHDSA_SHA2_128S_WOTS_LEN1 == BCM_SLHDSA_SHA2_128S_N * 2, "");
+  static_assert(SLHDSA_SHA2_128S_WOTS_LEN1 == BCM_SLHDSA_SHA2_128S_N * 2);
   uint16_t csum = 0;
   for (size_t i = 0; i < BCM_SLHDSA_SHA2_128S_N; ++i) {
     csum += SLHDSA_SHA2_128S_WOTS_W - 1 - (msg[i] >> 4);
@@ -149,7 +149,7 @@ void slhdsa_wots_pk_from_sig(uint8_t pk[BCM_SLHDSA_SHA2_128S_N],
   OPENSSL_memcpy(wots_pk_addr, addr, sizeof(wots_pk_addr));
 
   uint32_t chain_index = 0;
-  static_assert(SLHDSA_SHA2_128S_WOTS_LEN1 == BCM_SLHDSA_SHA2_128S_N * 2, "");
+  static_assert(SLHDSA_SHA2_128S_WOTS_LEN1 == BCM_SLHDSA_SHA2_128S_N * 2);
   for (size_t i = 0; i < BCM_SLHDSA_SHA2_128S_N; ++i) {
     slhdsa_wots_pk_from_sig_do_chain(tmp, addr, sig, msg[i] >> 4, pub_seed,
                                      chain_index++);

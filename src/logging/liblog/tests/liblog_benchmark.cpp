@@ -32,6 +32,7 @@
 #include <benchmark/benchmark.h>
 #include <cutils/sockets.h>
 #include <log/event_tag_map.h>
+#include <log/logprint.h>
 #include <log/log_read.h>
 #include <private/android_logger.h>
 
@@ -1029,3 +1030,24 @@ static void BM_log_convertPrintable_non_ascii(benchmark::State& state) {
   }
 }
 BENCHMARK(BM_log_convertPrintable_non_ascii);
+
+static void BM_android_log_formatLogLine(benchmark::State& state) {
+  AndroidLogFormat* formatter = android_log_format_new();
+  android_log_setPrintFormat(formatter, android_log_formatFromString("threadtime"));
+
+  AndroidLogEntry entry;
+  entry.priority = ANDROID_LOG_ERROR;
+  entry.uid = entry.pid = entry.tid = 1234;
+  entry.tag = "InetDiagMessage";
+  entry.tagLen = strlen(entry.tag);
+  entry.message = "Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14";
+  entry.messageLen = strlen(entry.message);
+
+  char buf[BUFSIZ];
+  for (auto _ : state) {
+    size_t out_length;
+    benchmark::DoNotOptimize(android_log_formatLogLine(formatter, buf, sizeof(buf),
+                                                       &entry, &out_length));
+  }
+}
+BENCHMARK(BM_android_log_formatLogLine);

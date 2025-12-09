@@ -36,36 +36,36 @@ template <class Callable, class... Args>
 
 using Func = decltype(testFunc);
 
-static void BenchmarkFuncRaw(benchmark::State& state) {
+static void BM_FuncRaw(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(testFunc, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkFuncRaw);
+BENCHMARK(BM_FuncRaw);
 
-static void BenchmarkFuncPtr(benchmark::State& state) {
+static void BM_FuncPtr(benchmark::State& state) {
   auto ptr = &testFunc;
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(ptr, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkFuncPtr);
+BENCHMARK(BM_FuncPtr);
 
-static void BenchmarkStdFunction(benchmark::State& state) {
+static void BM_StdFunction(benchmark::State& state) {
   std::function<Func> f(testFunc);
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(f, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkStdFunction);
+BENCHMARK(BM_StdFunction);
 
-static void BenchmarkFunctionRef(benchmark::State& state) {
+static void BM_FunctionRef(benchmark::State& state) {
   function_ref<Func> f(testFunc);
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(f, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkFunctionRef);
+BENCHMARK(BM_FunctionRef);
 
 namespace {
 struct BigFunc {
@@ -76,39 +76,39 @@ struct BigFunc {
 static BigFunc bigFunc;
 }  // namespace
 
-static void BenchmarkBigRaw(benchmark::State& state) {
+static void BM_BigRaw(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(bigFunc, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkBigRaw);
+BENCHMARK(BM_BigRaw);
 
-static void BenchmarkBigStdFunction(benchmark::State& state) {
+static void BM_BigStdFunction(benchmark::State& state) {
   std::function<Func> f(bigFunc);
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(f, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkBigStdFunction);
+BENCHMARK(BM_BigStdFunction);
 
-static void BenchmarkBigFunctionRef(benchmark::State& state) {
+static void BM_BigFunctionRef(benchmark::State& state) {
   function_ref<Func> f(bigFunc);
   for (auto _ : state) {
     benchmark::DoNotOptimize(call(f, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkBigFunctionRef);
+BENCHMARK(BM_BigFunctionRef);
 
-static void BenchmarkMakeFunctionRef(benchmark::State& state) {
+static void BM_MakeFunctionRef(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(call<function_ref<Func>>(bigFunc, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkMakeFunctionRef);
+BENCHMARK(BM_MakeFunctionRef);
 
-static void BenchmarkMakeStdFunction(benchmark::State& state) {
+static void BM_MakeStdFunction(benchmark::State& state) {
   for (auto _ : state) {
     benchmark::DoNotOptimize(call<std::function<Func>>(bigFunc, 1, "1", '1'));
   }
 }
-BENCHMARK(BenchmarkMakeStdFunction);
+BENCHMARK(BM_MakeStdFunction);

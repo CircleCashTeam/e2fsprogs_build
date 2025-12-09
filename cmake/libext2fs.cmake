@@ -1,8 +1,6 @@
 set(target_name "ext2fs")
 
-set(libext2fs_dir
-    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/ext2fs"
-)
+set(libext2fs_dir "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/ext2fs")
 
 set(libext2fs_srcs
     "${libext2fs_dir}/ext2_err.c"
@@ -44,6 +42,7 @@ set(libext2fs_srcs
     "${libext2fs_dir}/gen_bitmap64.c"
     "${libext2fs_dir}/get_num_dirs.c"
     "${libext2fs_dir}/get_pathname.c"
+    "${libext2fs_dir}/getenv.c"
     "${libext2fs_dir}/getsize.c"
     "${libext2fs_dir}/getsectsize.c"
     "${libext2fs_dir}/hashmap.c"
@@ -68,6 +67,7 @@ set(libext2fs_srcs
     "${libext2fs_dir}/newdir.c"
     "${libext2fs_dir}/nls_utf8.c"
     "${libext2fs_dir}/openfs.c"
+    "${libext2fs_dir}/orphan.c"
     "${libext2fs_dir}/progress.c"
     "${libext2fs_dir}/punch.c"
     "${libext2fs_dir}/qcow2.c"
@@ -95,13 +95,16 @@ else()
     list(APPEND libext2fs_srcs "${libext2fs_dir}/unix_io.c")
 endif()
 
-list(APPEND libext2_headers "${libext2fs_dir}")
-
-add_library(${target_name} ${libext2fs_srcs})
-target_compile_options(${target_name} PRIVATE ${e2fsprogs_cflags})
-
-target_include_directories(${target_name} PRIVATE
-    ${e2fsprogs_includes}
-    ${libext2_headers}
+add_library(${target_name} STATIC ${libext2fs_srcs})
+target_compile_options(${target_name} PUBLIC ${e2fsprogs_cflags})
+target_include_directories(${target_name} PUBLIC
+    ${e2fsprogs_headers}
     ${libsparse_headers}
+)
+
+target_link_libraries(${target_name} PUBLIC 
+    sparse
+    ext2_com_err
+    ext2_uuid
+    zlib
 )

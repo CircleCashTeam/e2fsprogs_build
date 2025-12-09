@@ -1,11 +1,16 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/dsa.h>
 
@@ -131,9 +136,9 @@ int DSA_SIG_marshal(CBB *cbb, const DSA_SIG *sig) {
 }
 
 DSA *DSA_parse_public_key(CBS *cbs) {
-  DSA *ret = DSA_new();
-  if (ret == NULL) {
-    return NULL;
+  bssl::UniquePtr<DSA> ret(DSA_new());
+  if (ret == nullptr) {
+    return nullptr;
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
@@ -143,16 +148,12 @@ DSA *DSA_parse_public_key(CBS *cbs) {
       !parse_integer(&child, &ret->g) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
-    goto err;
+    return nullptr;
   }
-  if (!dsa_check_key(ret)) {
-    goto err;
+  if (!dsa_check_key(ret.get())) {
+    return nullptr;
   }
-  return ret;
-
-err:
-  DSA_free(ret);
-  return NULL;
+  return ret.release();
 }
 
 int DSA_marshal_public_key(CBB *cbb, const DSA *dsa) {
@@ -170,9 +171,9 @@ int DSA_marshal_public_key(CBB *cbb, const DSA *dsa) {
 }
 
 DSA *DSA_parse_parameters(CBS *cbs) {
-  DSA *ret = DSA_new();
-  if (ret == NULL) {
-    return NULL;
+  bssl::UniquePtr<DSA> ret(DSA_new());
+  if (ret == nullptr) {
+    return nullptr;
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
@@ -181,16 +182,12 @@ DSA *DSA_parse_parameters(CBS *cbs) {
       !parse_integer(&child, &ret->g) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
-    goto err;
+    return nullptr;
   }
-  if (!dsa_check_key(ret)) {
-    goto err;
+  if (!dsa_check_key(ret.get())) {
+    return nullptr;
   }
-  return ret;
-
-err:
-  DSA_free(ret);
-  return NULL;
+  return ret.release();
 }
 
 int DSA_marshal_parameters(CBB *cbb, const DSA *dsa) {
@@ -207,9 +204,9 @@ int DSA_marshal_parameters(CBB *cbb, const DSA *dsa) {
 }
 
 DSA *DSA_parse_private_key(CBS *cbs) {
-  DSA *ret = DSA_new();
-  if (ret == NULL) {
-    return NULL;
+  bssl::UniquePtr<DSA> ret(DSA_new());
+  if (ret == nullptr) {
+    return nullptr;
   }
 
   CBS child;
@@ -217,12 +214,12 @@ DSA *DSA_parse_private_key(CBS *cbs) {
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&child, &version)) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
-    goto err;
+    return nullptr;
   }
 
   if (version != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_BAD_VERSION);
-    goto err;
+    return nullptr;
   }
 
   if (!parse_integer(&child, &ret->p) ||
@@ -232,17 +229,13 @@ DSA *DSA_parse_private_key(CBS *cbs) {
       !parse_integer(&child, &ret->priv_key) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_DECODE_ERROR);
-    goto err;
+    return nullptr;
   }
-  if (!dsa_check_key(ret)) {
-    goto err;
+  if (!dsa_check_key(ret.get())) {
+    return nullptr;
   }
 
-  return ret;
-
-err:
-  DSA_free(ret);
-  return NULL;
+  return ret.release();
 }
 
 int DSA_marshal_private_key(CBB *cbb, const DSA *dsa) {

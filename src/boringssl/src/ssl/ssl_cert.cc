@@ -1,12 +1,17 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ssl.h>
 
@@ -18,10 +23,12 @@
 
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
+#include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/mem.h>
-#include <openssl/sha.h>
+#include <openssl/sha2.h>
 #include <openssl/x509.h>
 
 #include "../crypto/internal.h"
@@ -255,13 +262,14 @@ bool ssl_cert_matches_issuer(const CBS *in, const CBS *dn) {
 }
 
 UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in) {
-  CBS buf = *in, tbs_cert;
-  if (!ssl_cert_skip_to_spki(&buf, &tbs_cert)) {
+  CBS buf = *in, tbs_cert, spki;
+  if (!ssl_cert_skip_to_spki(&buf, &tbs_cert) ||
+      !CBS_get_asn1_element(&tbs_cert, &spki, CBS_ASN1_SEQUENCE)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
     return nullptr;
   }
 
-  return UniquePtr<EVP_PKEY>(EVP_parse_public_key(&tbs_cert));
+  return ssl_parse_peer_subject_public_key_info(spki);
 }
 
 bool ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
@@ -483,12 +491,11 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 
   if (EVP_PKEY_id(pkey) == EVP_PKEY_EC) {
     // Check the key's group and point format are acceptable.
-    EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
     uint16_t group_id;
-    if (!ssl_nid_to_group_id(
-            &group_id, EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key))) ||
+    if (!ssl_nid_to_group_id(&group_id, EVP_PKEY_get_ec_curve_nid(pkey)) ||
         !tls1_check_group_id(hs, group_id) ||
-        EC_KEY_get_conv_form(ec_key) != POINT_CONVERSION_UNCOMPRESSED) {
+        EVP_PKEY_get_ec_point_conv_form(pkey) !=
+            POINT_CONVERSION_UNCOMPRESSED) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
       return false;
     }

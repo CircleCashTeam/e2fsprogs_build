@@ -38,6 +38,5 @@ add_library(${target_name} STATIC ${libext2_e2p_srcs})
 target_compile_options(${target_name} PRIVATE ${e2fsprogs_cflags})
 
 target_include_directories(${target_name} PRIVATE
-    ${e2fsprogs_includes}
-    ${libext2_headers}
+    ${e2fsprogs_headers}
 )

@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/obj.h>
 
@@ -13,12 +18,12 @@
 #include <limits.h>
 #include <string.h>
 
+#include <iterator>
+
 #include <openssl/asn1.h>
 #include <openssl/bytestring.h>
 #include <openssl/err.h>
-#include <openssl/lhash.h>
 #include <openssl/mem.h>
-#include <openssl/thread.h>
 
 #include "../asn1/internal.h"
 #include "../internal.h"
@@ -170,7 +175,7 @@ int OBJ_obj2nid(const ASN1_OBJECT *obj) {
   CRYPTO_MUTEX_unlock_read(&global_added_lock);
 
   const uint16_t *nid_ptr = reinterpret_cast<const uint16_t *>(
-      bsearch(obj, kNIDsInOIDOrder, OPENSSL_ARRAY_SIZE(kNIDsInOIDOrder),
+      bsearch(obj, kNIDsInOIDOrder, std::size(kNIDsInOIDOrder),
               sizeof(kNIDsInOIDOrder[0]), obj_cmp));
   if (nid_ptr == NULL) {
     return NID_undef;
@@ -216,10 +221,9 @@ int OBJ_sn2nid(const char *short_name) {
   }
   CRYPTO_MUTEX_unlock_read(&global_added_lock);
 
-  const uint16_t *nid_ptr = reinterpret_cast<const uint16_t *>(
-      bsearch(short_name, kNIDsInShortNameOrder,
-              OPENSSL_ARRAY_SIZE(kNIDsInShortNameOrder),
-              sizeof(kNIDsInShortNameOrder[0]), short_name_cmp));
+  const uint16_t *nid_ptr = reinterpret_cast<const uint16_t *>(bsearch(
+      short_name, kNIDsInShortNameOrder, std::size(kNIDsInShortNameOrder),
+      sizeof(kNIDsInShortNameOrder[0]), short_name_cmp));
   if (nid_ptr == NULL) {
     return NID_undef;
   }
@@ -251,9 +255,9 @@ int OBJ_ln2nid(const char *long_name) {
   }
   CRYPTO_MUTEX_unlock_read(&global_added_lock);
 
-  const uint16_t *nid_ptr = reinterpret_cast<const uint16_t *>(bsearch(
-      long_name, kNIDsInLongNameOrder, OPENSSL_ARRAY_SIZE(kNIDsInLongNameOrder),
-      sizeof(kNIDsInLongNameOrder[0]), long_name_cmp));
+  const uint16_t *nid_ptr = reinterpret_cast<const uint16_t *>(
+      bsearch(long_name, kNIDsInLongNameOrder, std::size(kNIDsInLongNameOrder),
+              sizeof(kNIDsInLongNameOrder[0]), long_name_cmp));
   if (nid_ptr == NULL) {
     return NID_undef;
   }
@@ -273,14 +277,8 @@ int OBJ_txt2nid(const char *s) {
 
 OPENSSL_EXPORT int OBJ_nid2cbb(CBB *out, int nid) {
   const ASN1_OBJECT *obj = OBJ_nid2obj(nid);
-  CBB oid;
-
-  if (obj == NULL || !CBB_add_asn1(out, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, obj->data, obj->length) || !CBB_flush(out)) {
-    return 0;
-  }
-
-  return 1;
+  return obj != NULL &&
+         CBB_add_asn1_element(out, CBS_ASN1_OBJECT, obj->data, obj->length);
 }
 
 const ASN1_OBJECT *OBJ_get_undef(void) {

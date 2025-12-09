@@ -1,18 +1,21 @@
-/*
- * Copyright 2002-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
-
-#include <openssl/aes.h>
+// Copyright 2002-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <assert.h>
 
 #include "internal.h"
-#include "../modes/internal.h"
+#include "../bcm_interface.h"
 
 
 // Be aware that different sets of AES functions use incompatible key
@@ -20,7 +23,8 @@
 // value, or both. Therefore they cannot mix. Also, on AArch64, the plain-C
 // code, above, is incompatible with the |aes_hw_*| functions.
 
-void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+bcm_infallible BCM_aes_encrypt(const uint8_t *in, uint8_t *out,
+                               const AES_KEY *key) {
   if (hwaes_capable()) {
     aes_hw_encrypt(in, out, key);
   } else if (vpaes_capable()) {
@@ -28,9 +32,11 @@ void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   } else {
     aes_nohw_encrypt(in, out, key);
   }
+  return bcm_infallible::not_approved;
 }
 
-void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+bcm_infallible BCM_aes_decrypt(const uint8_t *in, uint8_t *out,
+                               const AES_KEY *key) {
   if (hwaes_capable()) {
     aes_hw_decrypt(in, out, key);
   } else if (vpaes_capable()) {
@@ -38,32 +44,41 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   } else {
     aes_nohw_decrypt(in, out, key);
   }
+  return bcm_infallible::not_approved;
 }
 
-int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
-  if (bits != 128 && bits != 192 && bits != 256) {
-    return -2;
-  }
+bcm_status BCM_aes_set_encrypt_key(const uint8_t *key, unsigned bits,
+                                   AES_KEY *aeskey) {
+  int ret = -1;
   if (hwaes_capable()) {
-    return aes_hw_set_encrypt_key(key, bits, aeskey);
+    ret = aes_hw_set_encrypt_key(key, bits, aeskey);
   } else if (vpaes_capable()) {
-    return vpaes_set_encrypt_key(key, bits, aeskey);
+    ret = vpaes_set_encrypt_key(key, bits, aeskey);
   } else {
-    return aes_nohw_set_encrypt_key(key, bits, aeskey);
+    ret = aes_nohw_set_encrypt_key(key, bits, aeskey);
   }
+  if (ret < 0) {
+    return bcm_status::failure;
+  }
+  BSSL_CHECK(ret == 0);
+  return bcm_status::not_approved;
 }
 
-int AES_set_decrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
-  if (bits != 128 && bits != 192 && bits != 256) {
-    return -2;
-  }
+bcm_status BCM_aes_set_decrypt_key(const uint8_t *key, unsigned bits,
+                                   AES_KEY *aeskey) {
+  int ret = -1;
   if (hwaes_capable()) {
-    return aes_hw_set_decrypt_key(key, bits, aeskey);
+    ret = aes_hw_set_decrypt_key(key, bits, aeskey);
   } else if (vpaes_capable()) {
-    return vpaes_set_decrypt_key(key, bits, aeskey);
+    ret = vpaes_set_decrypt_key(key, bits, aeskey);
   } else {
-    return aes_nohw_set_decrypt_key(key, bits, aeskey);
+    ret = aes_nohw_set_decrypt_key(key, bits, aeskey);
   }
+  if (ret < 0) {
+    return bcm_status::failure;
+  }
+  BSSL_CHECK(ret == 0);
+  return bcm_status::not_approved;
 }
 
 #if defined(HWAES) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))

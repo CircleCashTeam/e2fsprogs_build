@@ -1,8 +1,6 @@
 set(target_name "log")
 
-set(liblog_src_dir
-    "${CMAKE_SOURCE_DIR}/src/logging/liblog"
-)
+set(liblog_src_dir "${CMAKE_SOURCE_DIR}/src/logging/liblog")
 
 set(liblog_src
     "${liblog_src_dir}/log_event_list.cpp"
@@ -14,6 +12,11 @@ set(liblog_src
     "${liblog_src_dir}/properties.cpp"
 )
 
+set(liblogwrap_src_dir "${CMAKE_SOURCE_DIR}/src/logging/logwrapper")
+set(liblogwrap_sources
+    "${liblogwrap_src_dir}/logwrap.cpp"
+)
+
 set(liblog_target_sources
     "${liblog_src_dir}/log_time.cpp"
     "${liblog_src_dir}/pmsg_reader.cpp"
@@ -23,6 +26,7 @@ set(liblog_target_sources
 )
 
 set(log_flags
+    "-std=c++23"
     "-Wall"
     "-Wextra"
     "-Wexit-time-destructors"
@@ -56,10 +60,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_options(${target_name} PRIVATE "-Wl,--dynamic-list=${liblog_src_dir}/liblog.map.txt")
 endif()
 target_compile_options(${target_name} PRIVATE ${log_flags})
-target_include_directories(${target_name} PRIVATE
+target_include_directories(${target_name} PUBLIC
     ${libbase_headers}
     ${libcutils_headers}
-    ${liblog_headers}
     ${libutils_headers}
+    ${liblog_headers}
     ${core_headers}
+)
+target_link_libraries(${target_name} PUBLIC
+        cutils
 )

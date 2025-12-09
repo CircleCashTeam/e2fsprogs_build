@@ -28,23 +28,17 @@ set(libext2_profile_srcs
 add_library(ext2_quota STATIC ${libext2_quota_srcs})
 target_compile_options(ext2_quota PRIVATE ${e2fsprogs_cflags})
 target_include_directories(ext2_quota PRIVATE
-    ${libext2_support_dir}
-    ${e2fsprogs_includes}
-    ${libext2_headers}
+    ${e2fsprogs_headers}
 )
 
 add_library(ext2_support STATIC ${libext2_support_srcs})
 target_compile_options(ext2_support PRIVATE ${e2fsprogs_cflags})
 target_include_directories(ext2_support PRIVATE
-    ${libext2_support_dir}
-    ${e2fsprogs_includes}
-    ${libext2_headers}
+    ${e2fsprogs_headers}
 )
 
 add_library(ext2_profile STATIC ${libext2_profile_srcs})
 target_compile_options(ext2_profile PRIVATE ${e2fsprogs_cflags})
 target_include_directories(ext2_profile PRIVATE
-    ${libext2_support_dir}
-    ${e2fsprogs_includes}
-    ${libext2_headers}
+    ${e2fsprogs_headers}
 )

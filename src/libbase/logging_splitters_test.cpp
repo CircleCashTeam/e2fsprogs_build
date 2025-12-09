@@ -51,7 +51,7 @@ TEST(logging_splitters, NewlineSplitter_BasicString) {
   TestNewlineSplitter("normal string", std::vector<std::string>{"normal string"});
 }
 
-TEST(logging_splitters, NewlineSplitter_ormalBasicStringTrailingNewline) {
+TEST(logging_splitters, NewlineSplitter_NormalBasicStringTrailingNewline) {
   TestNewlineSplitter("normal string\n", std::vector<std::string>{"normal string", ""});
 }
 
@@ -234,14 +234,13 @@ TEST(logging_splitters, LogdChunkSplitter_WithFile) {
   TestLogdChunkSplitter(tag, file, long_strings, expected);
 }
 
-// We set max_size based off of tag, so if it's too large, the buffer will be sized wrong.
-// We could recover from this, but it's certainly an error for someone to attempt to use a tag this
-// large, so we abort instead.
-TEST_F(logging_splitters_DeathTest, LogdChunkSplitter_TooLongTag) {
+// It's an error for someone to use a tag so long it fills the entire buffer,
+// with no room for a message, so we substitute a short tag instead.
+TEST(logging_splitters, LogdChunkSplitter_TooLongTag) {
   auto long_tag = std::string(5000, 'x');
-  auto logger_function = [](LogId, LogSeverity, const char*, const char*) {};
-  ASSERT_DEATH(
-      SplitByLogdChunks(MAIN, ERROR, long_tag.c_str(), nullptr, 0, "message", logger_function), "");
+  std::string message = "the message";
+  std::vector<std::string> expected = { message };
+  TestLogdChunkSplitter(long_tag, "", message, expected);
 }
 
 // We do handle excessively large file names correctly however.

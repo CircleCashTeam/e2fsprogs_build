@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/pem.h>
 
@@ -138,9 +143,7 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
 
   for (;;) {
     if (!PEM_read_bio(bp, &name, &header, &data, &len)) {
-      uint32_t error = ERR_peek_last_error();
-      if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
-          ERR_GET_REASON(error) == PEM_R_NO_START_LINE) {
+      if (ERR_equals(ERR_peek_last_error(), ERR_LIB_PEM, PEM_R_NO_START_LINE)) {
         ERR_clear_error();
         break;
       }
@@ -168,7 +171,8 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
       key_type = EVP_PKEY_EC;
     }
 
-    // If a private key has a header, assume it is encrypted.
+    // If a private key has a header, assume it is encrypted. This function does
+    // not decrypt private keys.
     if (key_type != EVP_PKEY_NONE && strlen(header) > 10) {
       if (info->x_pkey != NULL) {
         if (!sk_X509_INFO_push(ret, info)) {
@@ -179,7 +183,7 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
           goto err;
         }
       }
-      // Historically, raw entries pushed an empty key.
+      // Use an empty key as a placeholder.
       info->x_pkey = X509_PKEY_new();
       if (info->x_pkey == NULL ||
           !PEM_get_EVP_CIPHER_INFO(header, &info->enc_cipher)) {

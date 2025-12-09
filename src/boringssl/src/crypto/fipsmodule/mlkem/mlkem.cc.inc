@@ -1,16 +1,16 @@
-/* Copyright 2014 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2014 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/base.h>
 
@@ -93,11 +93,10 @@ constexpr size_t encoded_public_key_size(int rank) {
   return encoded_vector_size(rank) + /*sizeof(rho)=*/32;
 }
 
-static_assert(encoded_public_key_size(RANK768) == BCM_MLKEM768_PUBLIC_KEY_BYTES,
-              "");
+static_assert(encoded_public_key_size(RANK768) ==
+              BCM_MLKEM768_PUBLIC_KEY_BYTES);
 static_assert(encoded_public_key_size(RANK1024) ==
-                  BCM_MLKEM1024_PUBLIC_KEY_BYTES,
-              "");
+              BCM_MLKEM1024_PUBLIC_KEY_BYTES);
 
 constexpr size_t compressed_vector_size(int rank) {
   // `if constexpr` isn't available in C++17.
@@ -110,8 +109,8 @@ constexpr size_t ciphertext_size(int rank) {
          (rank == RANK768 ? kDV768 : kDV1024) * DEGREE / 8;
 }
 
-static_assert(ciphertext_size(RANK768) == BCM_MLKEM768_CIPHERTEXT_BYTES, "");
-static_assert(ciphertext_size(RANK1024) == BCM_MLKEM1024_CIPHERTEXT_BYTES, "");
+static_assert(ciphertext_size(RANK768) == BCM_MLKEM768_CIPHERTEXT_BYTES);
+static_assert(ciphertext_size(RANK1024) == BCM_MLKEM1024_CIPHERTEXT_BYTES);
 
 typedef struct scalar {
   // On every function entry and exit, 0 <= c < kPrime.
@@ -399,7 +398,7 @@ static void scalar_from_keccak_vartime(scalar *out,
 void scalar_centered_binomial_distribution_eta_2_with_prf(
     scalar *out, const uint8_t input[33]) {
   uint8_t entropy[128];
-  static_assert(sizeof(entropy) == 2 * /*kEta=*/2 * DEGREE / 8, "");
+  static_assert(sizeof(entropy) == 2 * /*kEta=*/2 * DEGREE / 8);
   prf(entropy, sizeof(entropy), input);
 
   for (int i = 0; i < DEGREE; i += 2) {
@@ -795,7 +794,7 @@ void mlkem_decap_no_self_test(
   hash_g(key_and_randomness, decrypted, sizeof(decrypted));
   constexpr size_t ciphertext_len = ciphertext_size(RANK);
   uint8_t expected_ciphertext[BCM_MLKEM1024_CIPHERTEXT_BYTES];
-  static_assert(ciphertext_len <= sizeof(expected_ciphertext), "");
+  static_assert(ciphertext_len <= sizeof(expected_ciphertext));
   encrypt_cpa(expected_ciphertext, &priv->pub, decrypted,
               key_and_randomness + 32);
 
@@ -936,7 +935,7 @@ void mlkem_encap_external_entropy_no_self_test(
   encrypt_cpa(out_ciphertext, pub, entropy, key_and_randomness + 32);
   // The ciphertext is public.
   CONSTTIME_DECLASSIFY(out_ciphertext, mlkem::ciphertext_size(RANK));
-  static_assert(BCM_MLKEM_SHARED_SECRET_BYTES == 32, "");
+  static_assert(BCM_MLKEM_SHARED_SECRET_BYTES == 32);
   memcpy(out_shared_secret, key_and_randomness, 32);
 }
 
@@ -1102,6 +1101,9 @@ bcm_status BCM_mlkem768_generate_key_fips(
     uint8_t out_encoded_public_key[BCM_MLKEM768_PUBLIC_KEY_BYTES],
     uint8_t optional_out_seed[BCM_MLKEM_SEED_BYTES],
     struct BCM_mlkem768_private_key *out_private_key) {
+  if (out_encoded_public_key == nullptr || out_private_key == nullptr) {
+    return bcm_status::failure;
+  }
   BCM_mlkem768_generate_key(out_encoded_public_key, optional_out_seed,
                             out_private_key);
   return BCM_mlkem768_check_fips(out_private_key);
@@ -1163,6 +1165,9 @@ bcm_status BCM_mlkem1024_generate_key_fips(
     uint8_t out_encoded_public_key[BCM_MLKEM1024_PUBLIC_KEY_BYTES],
     uint8_t optional_out_seed[BCM_MLKEM_SEED_BYTES],
     struct BCM_mlkem1024_private_key *out_private_key) {
+  if (out_encoded_public_key == nullptr || out_private_key == nullptr) {
+    return bcm_status::failure;
+  }
   BCM_mlkem1024_generate_key(out_encoded_public_key, optional_out_seed,
                              out_private_key);
   return BCM_mlkem1024_check_fips(out_private_key);

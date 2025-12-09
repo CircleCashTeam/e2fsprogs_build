@@ -109,6 +109,7 @@ cc_binary {
         "liblog",
         "liblogd",
         "liblogd_binder",
+        "liburing",
     ],
 
     shared_libs: [
@@ -119,6 +120,8 @@ cc_binary {
         "libprocessgroup",
         "libcap",
         "libutils",
+        "liburingutils",
+        "logd_flags_c_lib",
     ],
     aidl: {
         libs: [

@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <ctype.h>
 #include <string.h>
@@ -50,7 +55,7 @@ static int i2d_name_canon(STACK_OF(STACK_OF_X509_NAME_ENTRY) *intname,
 
 ASN1_SEQUENCE(X509_NAME_ENTRY) = {
     ASN1_SIMPLE(X509_NAME_ENTRY, object, ASN1_OBJECT),
-    ASN1_SIMPLE(X509_NAME_ENTRY, value, ASN1_PRINTABLE),
+    ASN1_SIMPLE(X509_NAME_ENTRY, value, ASN1_ANY_AS_STRING),
 } ASN1_SEQUENCE_END(X509_NAME_ENTRY)
 
 IMPLEMENT_ASN1_ALLOC_FUNCTIONS(X509_NAME_ENTRY)
@@ -484,4 +489,13 @@ int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **out_der,
     *out_der_len = nm->bytes->length;
   }
   return 1;
+}
+
+int x509_marshal_name(CBB *out, X509_NAME *in) {
+  int len = i2d_X509_NAME(in, nullptr);
+  if (len <= 0) {
+    return 0;
+  }
+  uint8_t *ptr;
+  return CBB_add_space(out, &ptr, len) && i2d_X509_NAME(in, &ptr) == len;
 }

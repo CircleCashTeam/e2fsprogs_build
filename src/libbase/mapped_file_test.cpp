@@ -18,12 +18,6 @@
 
 #include <gtest/gtest.h>
 
-#include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-#include <string>
-
 #include "android-base/file.h"
 
 TEST(mapped_file, smoke) {
@@ -35,6 +29,11 @@ TEST(mapped_file, smoke) {
   ASSERT_EQ(2u, m->size());
   ASSERT_EQ('l', m->data()[0]);
   ASSERT_EQ('o', m->data()[1]);
+
+  auto m2 = android::base::MappedFile::Create(tf.fd, 3, 2, PROT_READ);
+  ASSERT_EQ(2u, m2->size());
+  ASSERT_EQ('l', m2->data()[0]);
+  ASSERT_EQ('o', m2->data()[1]);
 }
 
 TEST(mapped_file, zero_length_mapping) {
@@ -46,4 +45,8 @@ TEST(mapped_file, zero_length_mapping) {
   auto m = android::base::MappedFile::FromFd(tf.fd, 4096, 0, PROT_READ);
   EXPECT_EQ(0u, m->size());
   EXPECT_NE(nullptr, m->data());
+
+  auto m2 = android::base::MappedFile::Create(tf.fd, 4096, 0, PROT_READ);
+  EXPECT_EQ(0u, m2->size());
+  EXPECT_NE(nullptr, m2->data());
 }

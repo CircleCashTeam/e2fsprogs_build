@@ -60,7 +60,7 @@ constexpr bool always_false_v = false;
 }
 
 template <typename T>
-std::string Trim(T&& t) {
+[[nodiscard]] std::string Trim(T&& t) {
   std::string_view sv;
   std::string s;
   if constexpr (std::is_convertible_v<T, std::string_view>) {

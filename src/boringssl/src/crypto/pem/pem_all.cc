@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <stdio.h>
 
@@ -33,14 +38,17 @@ IMPLEMENT_PEM_rw(PKCS7, PKCS7, PEM_STRING_PKCS7, PKCS7)
 // the relevant private key: this means can handle "traditional" and PKCS#8
 // formats transparently.
 static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa) {
-  RSA *rtmp;
   if (!key) {
-    return NULL;
+    return nullptr;
   }
-  rtmp = EVP_PKEY_get1_RSA(key);
-  EVP_PKEY_free(key);
+  if (EVP_PKEY_id(key) != EVP_PKEY_RSA) {
+    // Don't accept RSA-PSS keys in this function.
+    OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_AN_RSA_KEY);
+    return nullptr;
+  }
+  RSA *rtmp = EVP_PKEY_get1_RSA(key);
   if (!rtmp) {
-    return NULL;
+    return nullptr;
   }
   if (rsa) {
     RSA_free(*rsa);
@@ -51,15 +59,13 @@ static RSA *pkey_get_rsa(EVP_PKEY *key, RSA **rsa) {
 
 RSA *PEM_read_bio_RSAPrivateKey(BIO *bp, RSA **rsa, pem_password_cb *cb,
                                 void *u) {
-  EVP_PKEY *pktmp;
-  pktmp = PEM_read_bio_PrivateKey(bp, NULL, cb, u);
-  return pkey_get_rsa(pktmp, rsa);
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(bp, nullptr, cb, u));
+  return pkey_get_rsa(pkey.get(), rsa);
 }
 
 RSA *PEM_read_RSAPrivateKey(FILE *fp, RSA **rsa, pem_password_cb *cb, void *u) {
-  EVP_PKEY *pktmp;
-  pktmp = PEM_read_PrivateKey(fp, NULL, cb, u);
-  return pkey_get_rsa(pktmp, rsa);
+  bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_PrivateKey(fp, nullptr, cb, u));
+  return pkey_get_rsa(pkey.get(), rsa);
 }
 
 IMPLEMENT_PEM_write_cb_const(RSAPrivateKey, RSA, PEM_STRING_RSA, RSAPrivateKey)

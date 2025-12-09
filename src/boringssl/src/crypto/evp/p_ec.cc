@@ -1,11 +1,16 @@
-/*
- * Copyright 2006-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2006-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/evp.h>
 
@@ -143,12 +148,8 @@ static int pkey_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       // Default behaviour is OK
       return 1;
 
-    case EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID: {
-      const EC_GROUP *group = EC_GROUP_new_by_curve_name(p1);
-      if (group == NULL) {
-        return 0;
-      }
-      dctx->gen_group = group;
+    case EVP_PKEY_CTRL_EC_PARAMGEN_GROUP: {
+      dctx->gen_group = static_cast<const EC_GROUP *>(p2);
       return 1;
     }
 
@@ -192,7 +193,7 @@ static int pkey_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
   return 1;
 }
 
-const EVP_PKEY_METHOD ec_pkey_meth = {
+const EVP_PKEY_CTX_METHOD ec_pkey_meth = {
     EVP_PKEY_EC,
     pkey_ec_init,
     pkey_ec_copy,
@@ -211,8 +212,13 @@ const EVP_PKEY_METHOD ec_pkey_meth = {
 };
 
 int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx, int nid) {
+  const EC_GROUP *group = EC_GROUP_new_by_curve_name(nid);
+  if (group == nullptr) {
+    return 0;
+  }
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_EC, EVP_PKEY_OP_TYPE_GEN,
-                           EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID, nid, NULL);
+                           EVP_PKEY_CTRL_EC_PARAMGEN_GROUP, 0,
+                           const_cast<EC_GROUP *>(group));
 }
 
 int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx, int encoding) {

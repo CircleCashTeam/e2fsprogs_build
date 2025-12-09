@@ -72,6 +72,7 @@ struct TestEntry {
 
 SerializedLogChunk CreateChunk(size_t max_size, const std::vector<TestEntry>& entries,
                                bool finish_writing) {
+    auto lock = std::lock_guard{logd_lock};
     SerializedLogChunk chunk(max_size / SerializedLogBuffer::kChunkSizeDivisor);
 
     for (const auto& entry : entries) {

@@ -5,6 +5,7 @@ set(target_dir "${CMAKE_SOURCE_DIR}/src/e2fsprogs/debugfs")
 set(target_srcs
         "${target_dir}/debug_cmds.c"
         "${target_dir}/debugfs.c"
+        "${target_dir}/do_orphan.c"
         "${target_dir}/util.c"
         "${target_dir}/ncheck.c"
         "${target_dir}/icheck.c"
@@ -36,8 +37,8 @@ target_compile_options(${target_name} PRIVATE
 target_include_directories(${target_name} PRIVATE
     ${e2fsprogs_includes}
     ${libext2_headers}
-    ${target_dir}/../misc
-    ${target_dir}/../e2fsck
+    "${target_dir}/../misc"
+    "${target_dir}/../e2fsck"
 )
 target_link_libraries(${target_name} PRIVATE
     ext2_misc

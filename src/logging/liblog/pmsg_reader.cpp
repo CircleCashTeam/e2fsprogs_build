@@ -40,7 +40,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
 
   memset(log_msg, 0, sizeof(*log_msg));
 
-  if (atomic_load(&logger_list->fd) <= 0) {
+  if (logger_list->fd.load() <= 0) {
     int i, fd = open("/sys/fs/pstore/pmsg-ramoops-0", O_RDONLY | O_CLOEXEC);
 
     if (fd < 0) {
@@ -53,7 +53,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
         return -errno;
       }
     }
-    i = atomic_exchange(&logger_list->fd, fd);
+    i = logger_list->fd.exchange(fd);
     if ((i > 0) && (i != fd)) {
       close(i);
     }
@@ -64,7 +64,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
     int fd;
 
     if (preread_count < sizeof(buf)) {
-      fd = atomic_load(&logger_list->fd);
+      fd = logger_list->fd.load();
       if (fd <= 0) {
         return -EBADF;
       }
@@ -99,7 +99,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
         (!logger_list->pid || (logger_list->pid == buf.p.pid))) {
       char* msg = reinterpret_cast<char*>(&log_msg->entry) + sizeof(log_msg->entry);
       *msg = buf.prio;
-      fd = atomic_load(&logger_list->fd);
+      fd = logger_list->fd.load();
       if (fd <= 0) {
         return -EBADF;
       }
@@ -123,7 +123,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
       return ret + sizeof(buf.prio) + log_msg->entry.hdr_size;
     }
 
-    fd = atomic_load(&logger_list->fd);
+    fd = logger_list->fd.load();
     if (fd <= 0) {
       return -EBADF;
     }
@@ -131,7 +131,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
     if (current < 0) {
       return -errno;
     }
-    fd = atomic_load(&logger_list->fd);
+    fd = logger_list->fd.load();
     if (fd <= 0) {
       return -EBADF;
     }
@@ -146,7 +146,7 @@ int PmsgRead(struct logger_list* logger_list, struct log_msg* log_msg) {
 }
 
 void PmsgClose(struct logger_list* logger_list) {
-  int fd = atomic_exchange(&logger_list->fd, 0);
+  int fd = logger_list->fd.exchange(0);
   if (fd > 0) {
     close(fd);
   }

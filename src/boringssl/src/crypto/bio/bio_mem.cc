@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/bio.h>
 
@@ -17,6 +22,7 @@
 #include <openssl/mem.h>
 
 #include "../internal.h"
+#include "internal.h"
 
 
 BIO *BIO_new_mem_buf(const void *buf, ossl_ssize_t len) {
@@ -159,10 +165,7 @@ static int mem_gets(BIO *bio, char *buf, int size) {
 }
 
 static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
-  long ret = 1;
-
-  BUF_MEM *b = (BUF_MEM *)bio->ptr;
-
+  BUF_MEM *b = static_cast<BUF_MEM *>(bio->ptr);
   switch (cmd) {
     case BIO_CTRL_RESET:
       if (b->data != NULL) {
@@ -175,60 +178,52 @@ static long mem_ctrl(BIO *bio, int cmd, long num, void *ptr) {
           b->length = 0;
         }
       }
-      break;
+      return 1;
     case BIO_CTRL_EOF:
-      ret = (long)(b->length == 0);
-      break;
+      return b->length == 0;
     case BIO_C_SET_BUF_MEM_EOF_RETURN:
-      bio->num = (int)num;
-      break;
+      bio->num = static_cast<int>(num);
+      return 1;
     case BIO_CTRL_INFO:
-      ret = (long)b->length;
-      if (ptr != NULL) {
-        char **pptr = reinterpret_cast<char **>(ptr);
-        *pptr = b->data;
+      if (ptr != nullptr) {
+        char **out = reinterpret_cast<char **>(ptr);
+        *out = b->data;
       }
-      break;
+      // This API can overflow on 64-bit Windows, where |long| is smaller than
+      // |ptrdiff_t|. |BIO_mem_contents| is the overflow-safe API.
+      return static_cast<long>(b->length);
     case BIO_C_SET_BUF_MEM:
       mem_free(bio);
-      bio->shutdown = (int)num;
+      bio->shutdown = static_cast<int>(num);
       bio->ptr = ptr;
-      break;
+      return 1;
     case BIO_C_GET_BUF_MEM_PTR:
       if (ptr != NULL) {
-        BUF_MEM **pptr = reinterpret_cast<BUF_MEM **>(ptr);
-        *pptr = b;
+        BUF_MEM **out = reinterpret_cast<BUF_MEM **>(ptr);
+        *out = b;
       }
-      break;
+      return 1;
     case BIO_CTRL_GET_CLOSE:
-      ret = (long)bio->shutdown;
-      break;
+      return bio->shutdown;
     case BIO_CTRL_SET_CLOSE:
-      bio->shutdown = (int)num;
-      break;
-
+      bio->shutdown = static_cast<int>(num);
+      return 1;
     case BIO_CTRL_WPENDING:
-      ret = 0L;
-      break;
+      return 0;
     case BIO_CTRL_PENDING:
-      ret = (long)b->length;
-      break;
+      // TODO(crbug.com/412584975): This can overflow on 64-bit Windows.
+      return static_cast<long>(b->length);
     case BIO_CTRL_FLUSH:
-      ret = 1;
-      break;
+      return 1;
     default:
-      ret = 0;
-      break;
+      return 0;
   }
-  return ret;
 }
 
 static const BIO_METHOD mem_method = {
-    BIO_TYPE_MEM,    "memory buffer",
-    mem_write,       mem_read,
-    NULL /* puts */, mem_gets,
-    mem_ctrl,        mem_new,
-    mem_free,        NULL /* callback_ctrl */,
+    BIO_TYPE_MEM, "memory buffer", mem_write,
+    mem_read,     mem_gets,        mem_ctrl,
+    mem_new,      mem_free,        /*callback_ctrl=*/nullptr,
 };
 
 const BIO_METHOD *BIO_s_mem(void) { return &mem_method; }

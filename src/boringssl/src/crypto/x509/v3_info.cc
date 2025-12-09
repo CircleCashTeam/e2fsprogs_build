@@ -1,11 +1,16 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +23,6 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
-#include "ext_dat.h"
 #include "internal.h"
 
 
@@ -80,7 +84,6 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
   const AUTHORITY_INFO_ACCESS *ainfo =
       reinterpret_cast<const AUTHORITY_INFO_ACCESS *>(ext);
   ACCESS_DESCRIPTION *desc;
-  int name_len;
   char objtmp[80], *name;
   CONF_VALUE *vtmp;
   STACK_OF(CONF_VALUE) *tret = ret;
@@ -97,14 +100,9 @@ static STACK_OF(CONF_VALUE) *i2v_AUTHORITY_INFO_ACCESS(
     vtmp = sk_CONF_VALUE_value(tret, i);
     i2t_ASN1_OBJECT(objtmp, sizeof objtmp, desc->method);
 
-    name_len = strlen(objtmp) + 3 + strlen(vtmp->name) + 1;
-    name = reinterpret_cast<char *>(OPENSSL_malloc(name_len));
-    if (name == NULL) {
+    if (OPENSSL_asprintf(&name, "%s - %s", objtmp, vtmp->name) == -1) {
       goto err;
     }
-    OPENSSL_strlcpy(name, objtmp, name_len);
-    OPENSSL_strlcat(name, " - ", name_len);
-    OPENSSL_strlcat(name, vtmp->name, name_len);
     OPENSSL_free(vtmp->name);
     vtmp->name = name;
   }
@@ -123,43 +121,40 @@ err:
 static void *v2i_AUTHORITY_INFO_ACCESS(const X509V3_EXT_METHOD *method,
                                        const X509V3_CTX *ctx,
                                        const STACK_OF(CONF_VALUE) *nval) {
-  AUTHORITY_INFO_ACCESS *ainfo = NULL;
-  ACCESS_DESCRIPTION *acc;
-  if (!(ainfo = sk_ACCESS_DESCRIPTION_new_null())) {
-    return NULL;
+  bssl::UniquePtr<AUTHORITY_INFO_ACCESS> ainfo(sk_ACCESS_DESCRIPTION_new_null());
+  if (ainfo == nullptr) {
+    return nullptr;
   }
   for (size_t i = 0; i < sk_CONF_VALUE_num(nval); i++) {
     const CONF_VALUE *cnf = sk_CONF_VALUE_value(nval, i);
-    if (!(acc = ACCESS_DESCRIPTION_new()) ||
-        !sk_ACCESS_DESCRIPTION_push(ainfo, acc)) {
-      goto err;
+    bssl::UniquePtr<ACCESS_DESCRIPTION> acc(ACCESS_DESCRIPTION_new());
+    if (acc == nullptr) {
+      return nullptr;
     }
     char *ptmp = strchr(cnf->name, ';');
     if (!ptmp) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_INVALID_SYNTAX);
-      goto err;
+      return nullptr;
     }
     CONF_VALUE ctmp;
     ctmp.name = ptmp + 1;
     ctmp.value = cnf->value;
     if (!v2i_GENERAL_NAME_ex(acc->location, method, ctx, &ctmp, 0)) {
-      goto err;
+      return nullptr;
     }
-    char *objtmp = OPENSSL_strndup(cnf->name, ptmp - cnf->name);
-    if (objtmp == NULL) {
-      goto err;
+    bssl::UniquePtr<char> objtmp(OPENSSL_strndup(cnf->name, ptmp - cnf->name));
+    if (objtmp == nullptr) {
+      return nullptr;
     }
-    acc->method = OBJ_txt2obj(objtmp, 0);
+    acc->method = OBJ_txt2obj(objtmp.get(), 0);
     if (!acc->method) {
       OPENSSL_PUT_ERROR(X509V3, X509V3_R_BAD_OBJECT);
-      ERR_add_error_data(2, "value=", objtmp);
-      OPENSSL_free(objtmp);
-      goto err;
+      ERR_add_error_data(2, "value=", objtmp.get());
+      return nullptr;
     }
-    OPENSSL_free(objtmp);
+    if (!bssl::PushToStack(ainfo.get(), std::move(acc))) {
+      return nullptr;
+    }
   }
-  return ainfo;
-err:
-  sk_ACCESS_DESCRIPTION_pop_free(ainfo, ACCESS_DESCRIPTION_free);
-  return NULL;
+  return ainfo.release();
 }

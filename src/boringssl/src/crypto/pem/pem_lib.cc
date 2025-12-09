@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <assert.h>
 #include <ctype.h>
@@ -16,6 +21,7 @@
 
 #include <openssl/base64.h>
 #include <openssl/buf.h>
+#include <openssl/cipher.h>
 #include <openssl/des.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -176,9 +182,7 @@ int PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **pnm,
 
   for (;;) {
     if (!PEM_read_bio(bp, &nm, &header, &data, &len)) {
-      uint32_t error = ERR_peek_error();
-      if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
-          ERR_GET_REASON(error) == PEM_R_NO_START_LINE) {
+      if (ERR_equals(ERR_peek_error(), ERR_LIB_PEM, PEM_R_NO_START_LINE)) {
         ERR_add_error_data(2, "Expecting: ", name);
       }
       return 0;
@@ -234,7 +238,7 @@ int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp, void *x,
 int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
                        const EVP_CIPHER *enc, const unsigned char *pass,
                        int pass_len, pem_password_cb *callback, void *u) {
-  EVP_CIPHER_CTX ctx;
+  bssl::ScopedEVP_CIPHER_CTX ctx;
   int dsize = 0, i, j, ret = 0;
   unsigned char *p, *data = NULL;
   const char *objstr = NULL;
@@ -300,16 +304,14 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
     PEM_dek_info(buf, objstr, iv_len, (char *)iv);
     // k=strlen(buf);
 
-    EVP_CIPHER_CTX_init(&ctx);
     ret = 1;
-    if (!EVP_EncryptInit_ex(&ctx, enc, NULL, key, iv) ||
-        !EVP_EncryptUpdate(&ctx, data, &j, data, i) ||
-        !EVP_EncryptFinal_ex(&ctx, &(data[j]), &i)) {
+    if (!EVP_EncryptInit_ex(ctx.get(), enc, NULL, key, iv) ||
+        !EVP_EncryptUpdate(ctx.get(), data, &j, data, i) ||
+        !EVP_EncryptFinal_ex(ctx.get(), &(data[j]), &i)) {
       ret = 0;
     } else {
       i += j;
     }
-    EVP_CIPHER_CTX_cleanup(&ctx);
     if (ret == 0) {
       goto err;
     }
@@ -324,7 +326,6 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp, void *x,
 err:
   OPENSSL_cleanse(key, sizeof(key));
   OPENSSL_cleanse(iv, sizeof(iv));
-  OPENSSL_cleanse((char *)&ctx, sizeof(ctx));
   OPENSSL_cleanse(buf, PEM_BUFSIZE);
   OPENSSL_free(data);
   return ret;
@@ -334,7 +335,7 @@ int PEM_do_header(const EVP_CIPHER_INFO *cipher, unsigned char *data,
                   long *plen, pem_password_cb *callback, void *u) {
   int i = 0, j, o, pass_len;
   long len;
-  EVP_CIPHER_CTX ctx;
+  bssl::ScopedEVP_CIPHER_CTX ctx;
   unsigned char key[EVP_MAX_KEY_LENGTH];
   char buf[PEM_BUFSIZE];
 
@@ -360,15 +361,13 @@ int PEM_do_header(const EVP_CIPHER_INFO *cipher, unsigned char *data,
   }
 
   j = (int)len;
-  EVP_CIPHER_CTX_init(&ctx);
-  o = EVP_DecryptInit_ex(&ctx, cipher->cipher, NULL, key, cipher->iv);
+  o = EVP_DecryptInit_ex(ctx.get(), cipher->cipher, NULL, key, cipher->iv);
   if (o) {
-    o = EVP_DecryptUpdate(&ctx, data, &i, data, j);
+    o = EVP_DecryptUpdate(ctx.get(), data, &i, data, j);
   }
   if (o) {
-    o = EVP_DecryptFinal_ex(&ctx, &(data[i]), &j);
+    o = EVP_DecryptFinal_ex(ctx.get(), &(data[i]), &j);
   }
-  EVP_CIPHER_CTX_cleanup(&ctx);
   OPENSSL_cleanse((char *)buf, sizeof(buf));
   OPENSSL_cleanse((char *)key, sizeof(key));
   if (!o) {
@@ -391,14 +390,11 @@ int PEM_get_EVP_CIPHER_INFO(const char *header, EVP_CIPHER_INFO *cipher) {
     return 0;
   }
   header += 11;
-  if (*header != '4') {
+  if (header[0] != '4' || header[1] != ',') {
+    OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_PROC_TYPE_VERSION);
     return 0;
   }
-  header++;
-  if (*header != ',') {
-    return 0;
-  }
-  header++;
+  header += 2;
   if (strncmp(header, "ENCRYPTED", 9) != 0) {
     OPENSSL_PUT_ERROR(PEM, PEM_R_NOT_ENCRYPTED);
     return 0;

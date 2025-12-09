@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/bn.h>
 
@@ -39,24 +44,24 @@
   do {                                    \
     BN_ULLONG t;                          \
     t = (BN_ULLONG)(w) * (a) + (r) + (c); \
-    (r) = Lw(t);                          \
-    (c) = Hw(t);                          \
+    (r) = (BN_ULONG)(t);                  \
+    (c) = (BN_ULONG)((t) >> BN_BITS2);    \
   } while (0)
 
-#define mul(r, a, w, c)             \
-  do {                              \
-    BN_ULLONG t;                    \
-    t = (BN_ULLONG)(w) * (a) + (c); \
-    (r) = Lw(t);                    \
-    (c) = Hw(t);                    \
+#define mul(r, a, w, c)                \
+  do {                                 \
+    BN_ULLONG t;                       \
+    t = (BN_ULLONG)(w) * (a) + (c);    \
+    (r) = (BN_ULONG)(t);               \
+    (c) = (BN_ULONG)((t) >> BN_BITS2); \
   } while (0)
 
-#define sqr(r0, r1, a)        \
-  do {                        \
-    BN_ULLONG t;              \
-    t = (BN_ULLONG)(a) * (a); \
-    (r0) = Lw(t);             \
-    (r1) = Hw(t);             \
+#define sqr(r0, r1, a)                  \
+  do {                                  \
+    BN_ULLONG t;                        \
+    t = (BN_ULLONG)(a) * (a);           \
+    (r0) = (BN_ULONG)(t);               \
+    (r1) = (BN_ULONG)((t) >> BN_BITS2); \
   } while (0)
 
 #else
@@ -146,22 +151,33 @@ BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
   return c1;
 }
 
-void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
+void bn_sqr_add_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
   if (n == 0) {
     return;
   }
 
+  BN_ULONG carry = 0, lo, hi;
   while (n & ~3) {
-    sqr(r[0], r[1], a[0]);
-    sqr(r[2], r[3], a[1]);
-    sqr(r[4], r[5], a[2]);
-    sqr(r[6], r[7], a[3]);
+    sqr(lo, hi, a[0]);
+    r[0] = CRYPTO_addc_w(r[0], lo, carry, &carry);
+    r[1] = CRYPTO_addc_w(r[1], hi, carry, &carry);
+    sqr(lo, hi, a[1]);
+    r[2] = CRYPTO_addc_w(r[2], lo, carry, &carry);
+    r[3] = CRYPTO_addc_w(r[3], hi, carry, &carry);
+    sqr(lo, hi, a[2]);
+    r[4] = CRYPTO_addc_w(r[4], lo, carry, &carry);
+    r[5] = CRYPTO_addc_w(r[5], hi, carry, &carry);
+    sqr(lo, hi, a[3]);
+    r[6] = CRYPTO_addc_w(r[6], lo, carry, &carry);
+    r[7] = CRYPTO_addc_w(r[7], hi, carry, &carry);
     a += 4;
     r += 8;
     n -= 4;
   }
   while (n) {
-    sqr(r[0], r[1], a[0]);
+    sqr(lo, hi, a[0]);
+    r[0] = CRYPTO_addc_w(r[0], lo, carry, &carry);
+    r[1] = CRYPTO_addc_w(r[1], hi, carry, &carry);
     a++;
     r += 2;
     n--;
@@ -182,8 +198,8 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
     BN_ULONG hi;                        \
     BN_ULLONG t = (BN_ULLONG)(a) * (b); \
     t += (c0); /* no carry */           \
-    (c0) = (BN_ULONG)Lw(t);             \
-    hi = (BN_ULONG)Hw(t);               \
+    (c0) = (BN_ULONG)(t);               \
+    hi = (BN_ULONG)((t) >> BN_BITS2);   \
     (c1) += (hi);                       \
     (c2) += (c1) < hi;                  \
   } while (0)
@@ -193,13 +209,13 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
     BN_ULONG hi;                            \
     BN_ULLONG t = (BN_ULLONG)(a) * (b);     \
     BN_ULLONG tt = t + (c0); /* no carry */ \
-    (c0) = (BN_ULONG)Lw(tt);                \
-    hi = (BN_ULONG)Hw(tt);                  \
+    (c0) = (BN_ULONG)(tt);                  \
+    hi = (BN_ULONG)((tt) >> BN_BITS2);      \
     (c1) += hi;                             \
     (c2) += (c1) < hi;                      \
     t += (c0); /* no carry */               \
-    (c0) = (BN_ULONG)Lw(t);                 \
-    hi = (BN_ULONG)Hw(t);                   \
+    (c0) = (BN_ULONG)(t);                   \
+    hi = (BN_ULONG)((t) >> BN_BITS2);       \
     (c1) += hi;                             \
     (c2) += (c1) < hi;                      \
   } while (0)
@@ -209,8 +225,8 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
     BN_ULONG hi;                              \
     BN_ULLONG t = (BN_ULLONG)(a)[i] * (a)[i]; \
     t += (c0); /* no carry */                 \
-    (c0) = (BN_ULONG)Lw(t);                   \
-    hi = (BN_ULONG)Hw(t);                     \
+    (c0) = (BN_ULONG)(t);                     \
+    hi = (BN_ULONG)((t) >> BN_BITS2);         \
     (c1) += hi;                               \
     (c2) += (c1) < hi;                        \
   } while (0)

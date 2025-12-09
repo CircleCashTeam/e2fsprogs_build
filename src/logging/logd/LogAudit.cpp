@@ -29,6 +29,7 @@
 #include <syslog.h>
 
 #include <android-base/file.h>
+#include <android-base/hex.h>
 #include <android-base/logging.h>
 #include <android-base/macros.h>
 #include <android-base/properties.h>
@@ -47,6 +48,8 @@ using android::base::GetBoolProperty;
 #define KMSG_PRIORITY(PRI)                               \
     '<', '0' + LOG_MAKEPRI(LOG_AUTH, LOG_PRI(PRI)) / 10, \
         '0' + LOG_MAKEPRI(LOG_AUTH, LOG_PRI(PRI)) % 10, '>'
+
+static const char* kDecodedPathPrefix = "Decoded path for audit";
 
 LogAudit::LogAudit(LogBuffer* buf, int fdDmesg)
     : SocketListener(getLogSocket(), false),
@@ -78,6 +81,9 @@ LogAudit::LogAudit(LogBuffer* buf, int fdDmesg)
     write(fdDmesg, auditd_message, sizeof(auditd_message));
 }
 
+// Called when the kernel encounters an avc denial and generates a log for it. The kauditd kernel
+// thread populates a buffer containing information about the denial, and sends it to the socket
+// associated with this SocketClient instance.
 bool LogAudit::onDataAvailable(SocketClient* cli) {
     if (!initialized) {
         prctl(PR_SET_NAME, "logd.auditd");
@@ -95,7 +101,9 @@ bool LogAudit::onDataAvailable(SocketClient* cli) {
         return false;
     }
 
-    logPrint("type=%d %.*s", rep.nlh.nlmsg_type, rep.nlh.nlmsg_len, rep.data);
+    if (logPrint("type=%d %.*s", rep.nlh.nlmsg_type, rep.nlh.nlmsg_len, rep.data) >= 0) {
+        logDecodedPath(rep.data);
+    }
 
     return true;
 }
@@ -198,6 +206,43 @@ std::string LogAudit::auditParse(const std::string& string, uid_t uid) {
     return result;
 }
 
+void LogAudit::logDecodedPath(const std::string& denial) {
+    // The kernel checks file paths before emitting them in denial messages to ensure that there
+    // aren't control characters or spaces that could pollute the logs.
+    //
+    // If a file path does not contain those characters, it is emitted as such in double quotes:
+    // path="/dev".
+    //
+    // If a file path has one of those characters, the kernel prints the hexadecimal representation
+    // of each character in the string instead, using two hex characters per character in the file
+    // path as such without double quotes:
+    // path=2F6D656D66643A63725F72656C726F202864656C6574656429
+    //
+    // android::base::HexToBytes() does further validation to ensure that the path is indeed a hex
+    // string.
+    std::string path = denialParse(denial, ' ', "path=");
+    std::vector<uint8_t> bytes;
+    if (path.empty() || !android::base::HexToBytes(path, &bytes)) {
+        return;
+    }
+
+    std::string decodedPath;
+    for (uint8_t& byte : bytes) {
+        if (isprint(byte)) {
+            decodedPath.push_back(byte);
+        } else {
+            decodedPath += android::base::StringPrintf("\\x%02.2x", byte);
+        }
+    }
+
+    if (!decodedPath.empty()) {
+        // Logging the audit timestamp is useful to help correlate which avc denial the decoded path
+        // corresponds to.
+        std::string auditTimestamp = denialParse(denial, ')', "audit(");
+        logPrint("%s(%s): %s", kDecodedPathPrefix, auditTimestamp.c_str(), decodedPath.c_str());
+    }
+}
+
 int LogAudit::logPrint(const char* fmt, ...) {
     if (fmt == nullptr) {
         return -EINVAL;
@@ -238,7 +283,11 @@ int LogAudit::logPrint(const char* fmt, ...) {
         memmove(pidptr, cp, strlen(cp) + 1);
     }
 
-    bool info = strstr(str, " permissive=1") || strstr(str, " policy loaded ");
+    // A decoded path is meant to aid in debugging an avc denial; treating as a warning doesn't
+    // make sense.  Use the decoded path prefix to identify those logs and mark them as
+    // informational.
+    bool info = strstr(str, " permissive=1") || strstr(str, " policy loaded ") ||
+                strstr(str, kDecodedPathPrefix);
     static std::string denial_metadata;
     if ((fdDmesg >= 0) && initialized) {
         struct iovec iov[4];
@@ -390,6 +439,11 @@ int LogAudit::log(char* buf, size_t len) {
         rc = logPrint("%s", audit + 1);
     }
     *audit = ' ';
+
+    if ((rc >= 0)) {
+        logDecodedPath(buf);
+    }
+
     return rc;
 }
 

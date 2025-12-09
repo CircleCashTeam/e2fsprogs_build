@@ -1,22 +1,28 @@
-/*
- * Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ec.h>
 
 #include <assert.h>
 #include <string.h>
 
+#include <iterator>
+
 #include <openssl/bn.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/thread.h>
 
 #include "../../internal.h"
 #include "../bn/internal.h"
@@ -163,7 +169,7 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
 
   int8_t g_wNAF[EC_MAX_BYTES * 8 + 1];
   EC_JACOBIAN g_precomp[EC_WNAF_TABLE_SIZE];
-  assert(wNAF_len <= OPENSSL_ARRAY_SIZE(g_wNAF));
+  assert(wNAF_len <= std::size(g_wNAF));
   const EC_JACOBIAN *g = &group->generator.raw;
   if (g_scalar != NULL) {
     ec_compute_wNAF(group, g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
@@ -171,7 +177,7 @@ int ec_GFp_mont_mul_public_batch(const EC_GROUP *group, EC_JACOBIAN *r,
   }
 
   for (size_t i = 0; i < num; i++) {
-    assert(wNAF_len <= OPENSSL_ARRAY_SIZE(wNAF[i]));
+    assert(wNAF_len <= std::size(wNAF[i]));
     ec_compute_wNAF(group, wNAF[i], &scalars[i], bits, EC_WNAF_WINDOW_BITS);
     compute_precomp(group, precomp[i], &points[i], EC_WNAF_TABLE_SIZE);
   }

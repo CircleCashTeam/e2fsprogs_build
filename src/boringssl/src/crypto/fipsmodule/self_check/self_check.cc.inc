@@ -1,21 +1,23 @@
-/* Copyright 2017 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2017 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/crypto.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <iterator>
 
 #include <openssl/aead.h>
 #include <openssl/aes.h>
@@ -269,7 +271,7 @@ static DH *self_test_dh(void) {
   };
 
   bn_set_static_words(priv, kFFDHE2048PrivateKeyData,
-                      OPENSSL_ARRAY_SIZE(kFFDHE2048PrivateKeyData));
+                      std::size(kFFDHE2048PrivateKeyData));
 
   if (!DH_set0_key(dh, NULL, priv)) {
     goto err;
@@ -569,7 +571,7 @@ static int boringssl_self_test_ffdh(void) {
   ffdhe2048_value = BN_new();
   if (ffdhe2048_value) {
     bn_set_static_words(ffdhe2048_value, kFFDHE2048PublicValueData,
-                        OPENSSL_ARRAY_SIZE(kFFDHE2048PublicValueData));
+                        std::size(kFFDHE2048PublicValueData));
   }
 
   dh = self_test_dh();
@@ -708,10 +710,6 @@ static int boringssl_self_test_fast(void) {
   };
   static const uint8_t kAESIV[16] = {0};
 
-  EVP_AEAD_CTX aead_ctx;
-  EVP_AEAD_CTX_zero(&aead_ctx);
-  int ret = 0;
-
   AES_KEY aes_key;
   uint8_t aes_iv[16];
   uint8_t output[256];
@@ -728,16 +726,17 @@ static int boringssl_self_test_fast(void) {
       0x50, 0x3a, 0xc5, 0x5e, 0x8e, 0x93, 0x40, 0xf2, 0x10, 0xd8,
   };
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
-  if (AES_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
-    fprintf(CRYPTO_get_stderr(), "AES_set_encrypt_key failed.\n");
-    goto err;
+  if (!bcm_success(
+          BCM_aes_set_encrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key))) {
+    fprintf(CRYPTO_get_stderr(), "BCM_aes_set_encrypt_key failed.\n");
+    return 0;
   }
   AES_cbc_encrypt(kAESCBCEncPlaintext, output, sizeof(kAESCBCEncPlaintext),
                   &aes_key, aes_iv, AES_ENCRYPT);
   if (!BORINGSSL_check_test(kAESCBCEncCiphertext, output,
                             sizeof(kAESCBCEncCiphertext),
                             "AES-CBC-encrypt KAT")) {
-    goto err;
+    return 0;
   }
 
   // AES-CBC Decryption KAT
@@ -752,25 +751,27 @@ static int boringssl_self_test_fast(void) {
       0xb2, 0x25, 0x6f, 0xa6, 0xd0, 0xd2, 0x0e, 0x6f, 0x19, 0xb5,
   };
   memcpy(aes_iv, kAESIV, sizeof(kAESIV));
-  if (AES_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key) != 0) {
-    fprintf(CRYPTO_get_stderr(), "AES_set_decrypt_key failed.\n");
-    goto err;
+  if (!bcm_success(
+          BCM_aes_set_decrypt_key(kAESKey, 8 * sizeof(kAESKey), &aes_key))) {
+    fprintf(CRYPTO_get_stderr(), "BCM_aes_set_decrypt_key failed.\n");
+    return 0;
   }
   AES_cbc_encrypt(kAESCBCDecCiphertext, output, sizeof(kAESCBCDecCiphertext),
                   &aes_key, aes_iv, AES_DECRYPT);
   if (!BORINGSSL_check_test(kAESCBCDecPlaintext, output,
                             sizeof(kAESCBCDecPlaintext),
                             "AES-CBC-decrypt KAT")) {
-    goto err;
+    return 0;
   }
 
   size_t out_len;
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
   OPENSSL_memset(nonce, 0, sizeof(nonce));
-  if (!EVP_AEAD_CTX_init(&aead_ctx, EVP_aead_aes_128_gcm(), kAESKey,
+  bssl::ScopedEVP_AEAD_CTX aead_ctx;
+  if (!EVP_AEAD_CTX_init(aead_ctx.get(), EVP_aead_aes_128_gcm(), kAESKey,
                          sizeof(kAESKey), 0, NULL)) {
     fprintf(CRYPTO_get_stderr(), "EVP_AEAD_CTX_init for AES-128-GCM failed.\n");
-    goto err;
+    return 0;
   }
 
   // AES-GCM Encryption KAT
@@ -785,14 +786,14 @@ static int boringssl_self_test_fast(void) {
       0x1c, 0x63, 0x2e, 0x97, 0x93, 0x0f, 0xfb, 0xed, 0xb5, 0x9e, 0x1c, 0x20,
       0xb2, 0xb0, 0x58, 0xda, 0x48, 0x07, 0x2d, 0xbd, 0x96, 0x0d, 0x34, 0xc6,
   };
-  if (!EVP_AEAD_CTX_seal(&aead_ctx, output, &out_len, sizeof(output), nonce,
-                         EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
+  if (!EVP_AEAD_CTX_seal(aead_ctx.get(), output, &out_len, sizeof(output),
+                         nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
                          kAESGCMEncPlaintext, sizeof(kAESGCMEncPlaintext), NULL,
                          0) ||
       !BORINGSSL_check_test(kAESGCMCiphertext, output,
                             sizeof(kAESGCMCiphertext), "AES-GCM-encrypt KAT")) {
     fprintf(CRYPTO_get_stderr(), "EVP_AEAD_CTX_seal for AES-128-GCM failed.\n");
-    goto err;
+    return 0;
   }
 
   // AES-GCM Decryption KAT
@@ -808,8 +809,8 @@ static int boringssl_self_test_fast(void) {
           0xa9, 0x99, 0x17, 0x6a, 0x45, 0x05, 0x5e, 0x99, 0x83, 0x56, 0x01,
           0xc0, 0x82, 0x40, 0x81, 0xd2, 0x48, 0x45, 0xf2, 0xcc, 0xc3,
       };
-  if (!EVP_AEAD_CTX_open(&aead_ctx, output, &out_len, sizeof(output), nonce,
-                         EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
+  if (!EVP_AEAD_CTX_open(aead_ctx.get(), output, &out_len, sizeof(output),
+                         nonce, EVP_AEAD_nonce_length(EVP_aead_aes_128_gcm()),
                          kAESGCMDecCiphertext, sizeof(kAESGCMDecCiphertext),
                          NULL, 0) ||
       !BORINGSSL_check_test(kAESGCMDecPlaintext, output,
@@ -817,7 +818,7 @@ static int boringssl_self_test_fast(void) {
                             "AES-GCM-decrypt KAT")) {
     fprintf(CRYPTO_get_stderr(),
             "AES-GCM-decrypt KAT failed because EVP_AEAD_CTX_open failed.\n");
-    goto err;
+    return 0;
   }
 
   // SHA-1 KAT
@@ -832,20 +833,23 @@ static int boringssl_self_test_fast(void) {
   SHA1(kSHA1Input, sizeof(kSHA1Input), output);
   if (!BORINGSSL_check_test(kSHA1Digest, output, sizeof(kSHA1Digest),
                             "SHA-1 KAT")) {
-    goto err;
+    return 0;
   }
 
   if (!boringssl_self_test_sha256() || !boringssl_self_test_sha512() ||
       !boringssl_self_test_hmac_sha256()) {
-    goto err;
+    return 0;
   }
 
   // DBRG KAT
-  static const uint8_t kDRBGEntropy[48] = {
-      0xc4, 0xda, 0x07, 0x40, 0xd5, 0x05, 0xf1, 0xee, 0x28, 0x0b, 0x95, 0xe5,
-      0x8c, 0x49, 0x31, 0xac, 0x6d, 0xe8, 0x46, 0xa0, 0x15, 0x2f, 0xbb, 0x4a,
-      0x3f, 0x17, 0x4c, 0xf4, 0x78, 0x7a, 0x4f, 0x1a, 0x40, 0xc2, 0xb5, 0x0b,
-      0xab, 0xe1, 0x4a, 0xae, 0x53, 0x0b, 0xe5, 0x88, 0x6d, 0x91, 0x0a, 0x27,
+  static const uint8_t kDRBGEntropy[32] = {
+      0xc4, 0xda, 0x07, 0x40, 0xd5, 0x05, 0xf1, 0xee, 0x28, 0x0b, 0x95,
+      0xe5, 0x8c, 0x49, 0x31, 0xac, 0x6d, 0xe8, 0x46, 0xa0, 0x15, 0x2f,
+      0xbb, 0x4a, 0x3f, 0x17, 0x4c, 0xf4, 0x78, 0x7a, 0x4f, 0x1a,
+  };
+  static const uint8_t kDRBGNonce[CTR_DRBG_NONCE_LEN] = {
+      0x40, 0xc2, 0xb5, 0x0b, 0xab, 0xe1, 0x4a, 0xae,
+      0x53, 0x0b, 0xe5, 0x88, 0x6d, 0x91, 0x0a, 0x27,
   };
   static const uint8_t kDRBGPersonalization[18] = {
       'B', 'C', 'M', 'P', 'e', 'r', 's', 'o', 'n',
@@ -853,12 +857,12 @@ static int boringssl_self_test_fast(void) {
   static const uint8_t kDRBGAD[16] = {'B', 'C', 'M', ' ', 'D', 'R', 'B', 'G',
                                       ' ', 'K', 'A', 'T', ' ', 'A', 'D', ' '};
   static const uint8_t kDRBGOutput[64] = {
-      0x19, 0x1f, 0x2b, 0x49, 0x76, 0x85, 0xfd, 0x51, 0xb6, 0x56, 0xbc,
-      0x1c, 0x7d, 0xd5, 0xdd, 0x44, 0x76, 0xa3, 0x5e, 0x17, 0x9b, 0x8e,
-      0xb8, 0x98, 0x65, 0x12, 0xca, 0x35, 0x6c, 0xa0, 0x6f, 0xa0, 0x22,
-      0xe4, 0xf6, 0xd8, 0x43, 0xed, 0x4e, 0x2d, 0x97, 0x39, 0x43, 0x3b,
-      0x57, 0xfc, 0x23, 0x3f, 0x71, 0x0a, 0xe0, 0xed, 0xfe, 0xd5, 0xb8,
-      0x67, 0x7a, 0x00, 0x39, 0xb2, 0x6e, 0xa9, 0x25, 0x97,
+      0x55, 0x88, 0x81, 0x88, 0x16, 0x49, 0x68, 0xd8, 0x23, 0xc8, 0x18,
+      0x57, 0x5d, 0x06, 0xc3, 0x5f, 0x60, 0x3a, 0xe8, 0xfe, 0x7c, 0x7e,
+      0x1c, 0x4a, 0x6a, 0xa8, 0x91, 0x07, 0xc0, 0x0d, 0x1f, 0x70, 0x4a,
+      0xbb, 0x20, 0x42, 0xd3, 0x3f, 0x19, 0xf1, 0xb1, 0xfc, 0xef, 0xa1,
+      0x71, 0xfd, 0xf7, 0xaf, 0xc5, 0x12, 0x7a, 0x98, 0xad, 0x42, 0xbc,
+      0x01, 0xe6, 0xa2, 0x83, 0xbc, 0x73, 0xb5, 0xba, 0x84,
   };
   static const uint8_t kDRBGEntropy2[48] = {
       0xc7, 0x16, 0x1c, 0xa3, 0x6c, 0x23, 0x09, 0xb7, 0x16, 0xe9, 0x85, 0x9b,
@@ -867,27 +871,29 @@ static int boringssl_self_test_fast(void) {
       0x76, 0xc1, 0x86, 0xe9, 0x35, 0x18, 0x03, 0x76, 0x3a, 0x79, 0x12, 0xfe,
   };
   static const uint8_t kDRBGReseedOutput[64] = {
-      0x00, 0xf2, 0x05, 0xaa, 0xfd, 0x11, 0x6c, 0x77, 0xbc, 0x81, 0x86,
-      0x99, 0xca, 0x51, 0xcf, 0x80, 0x15, 0x9f, 0x02, 0x9e, 0x0b, 0xcd,
-      0x26, 0xc8, 0x4b, 0x87, 0x8a, 0x15, 0x1a, 0xdd, 0xf2, 0xf3, 0xeb,
-      0x94, 0x0b, 0x08, 0xc8, 0xc9, 0x57, 0xa4, 0x0b, 0x4b, 0x0f, 0x13,
-      0xde, 0x7c, 0x0c, 0x6a, 0xac, 0x34, 0x4a, 0x9a, 0xf2, 0xd0, 0x83,
-      0x02, 0x05, 0x17, 0xc9, 0x81, 0x8f, 0x2a, 0x81, 0x92,
+      0xda, 0x49, 0xa1, 0x01, 0x31, 0x71, 0x77, 0xde, 0xf6, 0x8d, 0xb5,
+      0x4f, 0x86, 0x0d, 0xc8, 0xd6, 0x3c, 0xaa, 0xbc, 0x72, 0x0a, 0x9c,
+      0x8b, 0x68, 0xa9, 0x70, 0xf1, 0x21, 0x13, 0xce, 0xc6, 0xbc, 0xff,
+      0xaf, 0xa8, 0xd5, 0x26, 0x76, 0x26, 0xcc, 0x0d, 0x89, 0x66, 0xab,
+      0xc2, 0x11, 0xa8, 0x2f, 0xf1, 0x36, 0xa3, 0x2b, 0x52, 0xcd, 0x1a,
+      0x2d, 0xe4, 0x82, 0xac, 0x3c, 0xbb, 0xa9, 0x17, 0x90,
   };
   CTR_DRBG_STATE drbg;
-  if (!CTR_DRBG_init(&drbg, kDRBGEntropy, kDRBGPersonalization,
+  if (!CTR_DRBG_init(&drbg, /*df=*/true, kDRBGEntropy, sizeof(kDRBGEntropy),
+                     kDRBGNonce, kDRBGPersonalization,
                      sizeof(kDRBGPersonalization)) ||
       !CTR_DRBG_generate(&drbg, output, sizeof(kDRBGOutput), kDRBGAD,
                          sizeof(kDRBGAD)) ||
       !BORINGSSL_check_test(kDRBGOutput, output, sizeof(kDRBGOutput),
                             "DRBG Generate KAT") ||
-      !CTR_DRBG_reseed(&drbg, kDRBGEntropy2, kDRBGAD, sizeof(kDRBGAD)) ||
+      !CTR_DRBG_reseed_ex(&drbg, kDRBGEntropy2, sizeof(kDRBGEntropy2), kDRBGAD,
+                          sizeof(kDRBGAD)) ||
       !CTR_DRBG_generate(&drbg, output, sizeof(kDRBGReseedOutput), kDRBGAD,
                          sizeof(kDRBGAD)) ||
       !BORINGSSL_check_test(kDRBGReseedOutput, output,
                             sizeof(kDRBGReseedOutput), "DRBG-reseed KAT")) {
     fprintf(CRYPTO_get_stderr(), "CTR-DRBG failed.\n");
-    goto err;
+    return 0;
   }
   CTR_DRBG_clear(&drbg);
 
@@ -895,7 +901,7 @@ static int boringssl_self_test_fast(void) {
   memset(&kZeroDRBG, 0, sizeof(kZeroDRBG));
   if (!BORINGSSL_check_test(&kZeroDRBG, &drbg, sizeof(drbg),
                             "DRBG Clear KAT")) {
-    goto err;
+    return 0;
   }
 
   // TLS KDF KAT
@@ -927,7 +933,7 @@ static int boringssl_self_test_fast(void) {
       !BORINGSSL_check_test(kTLS10Output, tls10_output, sizeof(kTLS10Output),
                             "TLS10-KDF KAT")) {
     fprintf(CRYPTO_get_stderr(), "TLS KDF failed.\n");
-    goto err;
+    return 0;
   }
 
   static const uint8_t kTLS12Secret[32] = {
@@ -948,7 +954,7 @@ static int boringssl_self_test_fast(void) {
       !BORINGSSL_check_test(kTLS12Output, tls12_output, sizeof(kTLS12Output),
                             "TLS12-KDF KAT")) {
     fprintf(CRYPTO_get_stderr(), "TLS KDF failed.\n");
-    goto err;
+    return 0;
   }
 
   // TLS v1.3: derives a dummy client-early-traffic secret.
@@ -988,7 +994,7 @@ static int boringssl_self_test_fast(void) {
                             sizeof(kTLS13ExpandLabelOutput),
                             "CRYPTO_tls13_hkdf_expand_label")) {
     fprintf(CRYPTO_get_stderr(), "TLS13-KDF failed.\n");
-    goto err;
+    return 0;
   }
 
   // HKDF
@@ -1019,25 +1025,29 @@ static int boringssl_self_test_fast(void) {
       !BORINGSSL_check_test(kHKDFOutput, hkdf_output, sizeof(kHKDFOutput),
                             "HKDF")) {
     fprintf(CRYPTO_get_stderr(), "HKDF failed.\n");
-    goto err;
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  EVP_AEAD_CTX_cleanup(&aead_ctx);
-
-  return ret;
+  return 1;
 }
 
 int BORINGSSL_self_test(void) {
   if (!boringssl_self_test_fast() ||
-      // When requested to run self tests, also run the lazy tests.
+      // When requested to run self tests, also run some of the lazy tests.
       !boringssl_self_test_rsa() ||    //
       !boringssl_self_test_ecc() ||    //
       !boringssl_self_test_ffdh() ||   //
       !boringssl_self_test_mlkem() ||  //
-      !boringssl_self_test_mldsa() ||  //
+      !boringssl_self_test_mldsa()) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int BORINGSSL_self_test_all(void) {
+  if (!BORINGSSL_self_test() ||
+      // When requested to run all self tests, add in the really slow tests.
       !boringssl_self_test_slhdsa()) {
     return 0;
   }

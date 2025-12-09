@@ -52,34 +52,31 @@ static void unlock() {
   pthread_mutex_unlock(&lock_loggable);
 }
 
-struct cache {
+struct cached_char {
   const prop_info* pinfo;
   uint32_t serial;
-};
-
-struct cache_char {
-  struct cache cache;
   unsigned char c;
 };
 
-static int check_cache(struct cache* cache) {
+static int check_cache(cached_char* cache) {
   return cache->pinfo && __system_property_serial(cache->pinfo) != cache->serial;
 }
 
 #define BOOLEAN_TRUE 0xFF
 #define BOOLEAN_FALSE 0xFE
 
-static void refresh_cache(struct cache_char* cache, const char* key) {
-  char buf[PROP_VALUE_MAX];
-
-  if (!cache->cache.pinfo) {
-    cache->cache.pinfo = __system_property_find(key);
-    if (!cache->cache.pinfo) {
+static void refresh_cache(cached_char* cache, const char* key) {
+  if (!cache->pinfo) {
+    cache->pinfo = __system_property_find(key);
+    if (!cache->pinfo) {
       return;
     }
   }
-  cache->cache.serial = __system_property_serial(cache->cache.pinfo);
-  __system_property_read(cache->cache.pinfo, 0, buf);
+  cache->serial = __system_property_serial(cache->pinfo);
+
+  // __system_property_read() can't fail because we're using an existing prop_info*.
+  char buf[PROP_VALUE_MAX] __attribute__((__uninitialized__));
+  __system_property_read(cache->pinfo, 0, buf);
   switch (buf[0]) {
     case 't':
     case 'T':
@@ -113,12 +110,18 @@ static int __android_log_level(const char* tag, size_t tag_len) {
   static std::string* last_tag = new std::string;
   static uint32_t global_serial;
   uint32_t current_global_serial;
-  static cache_char tag_cache[2];
-  static cache_char global_cache[2];
+  static cached_char tag_cache[2];
+  static cached_char global_cache[2];
 
-  static const char* log_namespace = "persist.log.tag.";
-  char key[strlen(log_namespace) + tag_len + 1];
-  strcpy(key, log_namespace);
+  // This function is a hotspot, so micro-optimize the string construction.
+  // We don't need a trailing \0 here because it will either be overwritten (if tag_len != 0)
+  // or we'll overwrite the '.' with a \0 in the switch default case.
+  // It's worth the saving because the string happens to be exactly 16 bytes long without the \0,
+  // so we can copy it with just two instructions on arm64.
+  // We use __builtin_memcpy() throughout this function to avoid any fortify overhead.
+  static const char log_namespace[] = "persist.log.tag.";
+  char key[strlen(log_namespace) + tag_len + 1] __attribute__((__uninitialized__));
+  __builtin_memcpy(key, log_namespace, strlen(log_namespace));
 
   bool locked = trylock();
   bool change_detected, global_change_detected;
@@ -128,12 +131,12 @@ static int __android_log_level(const char* tag, size_t tag_len) {
   if (locked) {
     // Check all known serial numbers for changes.
     for (size_t i = 0; i < arraysize(tag_cache); ++i) {
-      if (check_cache(&tag_cache[i].cache)) {
+      if (check_cache(&tag_cache[i])) {
         change_detected = true;
       }
     }
     for (size_t i = 0; i < arraysize(global_cache); ++i) {
-      if (check_cache(&global_cache[i].cache)) {
+      if (check_cache(&global_cache[i])) {
         global_change_detected = true;
       }
     }
@@ -151,21 +154,22 @@ static int __android_log_level(const char* tag, size_t tag_len) {
       if (last_tag->compare(0, last_tag->size(), tag, tag_len) != 0) {
         // Invalidate log.tag.<tag> cache.
         for (size_t i = 0; i < arraysize(tag_cache); ++i) {
-          tag_cache[i].cache.pinfo = NULL;
+          tag_cache[i].pinfo = nullptr;
           tag_cache[i].c = '\0';
         }
         last_tag->assign(tag, tag_len);
         local_change_detected = true;
       }
     }
-    *stpncpy(key + strlen(log_namespace), tag, tag_len) = '\0';
+    __builtin_memcpy(key + strlen(log_namespace), tag, tag_len);
+    key[strlen(log_namespace) + tag_len] = '\0';
 
     for (size_t i = 0; i < arraysize(tag_cache); ++i) {
-      cache_char* cache = &tag_cache[i];
-      cache_char temp_cache;
+      cached_char* cache = &tag_cache[i];
+      cached_char temp_cache;
 
       if (!locked) {
-        temp_cache.cache.pinfo = NULL;
+        temp_cache.pinfo = nullptr;
         temp_cache.c = '\0';
         cache = &temp_cache;
       }
@@ -196,13 +200,13 @@ static int __android_log_level(const char* tag, size_t tag_len) {
       key[strlen(log_namespace) - 1] = '\0';
 
       for (size_t i = 0; i < arraysize(global_cache); ++i) {
-        cache_char* cache = &global_cache[i];
-        cache_char temp_cache;
+        cached_char* cache = &global_cache[i];
+        cached_char temp_cache;
 
         if (!locked) {
           temp_cache = *cache;
-          if (temp_cache.cache.pinfo != cache->cache.pinfo) {  // check atomic
-            temp_cache.cache.pinfo = NULL;
+          if (temp_cache.pinfo != cache->pinfo) {  // check atomic
+            temp_cache.pinfo = nullptr;
             temp_cache.c = '\0';
           }
           cache = &temp_cache;
@@ -271,7 +275,7 @@ int __android_log_is_debuggable() {
 
 int __android_log_security() {
   static pthread_mutex_t security_lock = PTHREAD_MUTEX_INITIALIZER;
-  static cache_char security_prop = {{NULL, 0xFFFFFFFF}, BOOLEAN_FALSE};
+  static cached_char security_prop = {nullptr, 0xFFFFFFFF, BOOLEAN_FALSE};
   static uint32_t security_serial = 0;
 
   if (pthread_mutex_trylock(&security_lock)) {
@@ -279,7 +283,7 @@ int __android_log_security() {
     return security_prop.c == BOOLEAN_TRUE;
   }
 
-  int change_detected = check_cache(&security_prop.cache);
+  int change_detected = check_cache(&security_prop);
   uint32_t current_serial = __system_property_area_serial();
   if (current_serial != security_serial) {
     change_detected = 1;

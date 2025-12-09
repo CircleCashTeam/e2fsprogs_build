@@ -23,6 +23,29 @@
 #include <android-base/file.h>
 #include <android-base/macros.h>
 
+extern "C" void __hwasan_init() __attribute__((weak));
+
+namespace android {
+namespace base {
+
+// Prevents the compiler from optimizing away an otherwise unused expression.
+template <class T>
+static inline void DoNotOptimize(T const& value) {
+  asm volatile("" : : "r,m"(value) : "memory");
+}
+
+// Prevents the compiler from optimizing away an otherwise unused expression.
+template <class T>
+static inline void DoNotOptimize(T& value) {
+  asm volatile("" : "+r,m"(value) : : "memory");
+}
+
+static inline bool running_with_hwasan() {
+  return &__hwasan_init != nullptr;
+}
+
+#define SKIP_WITH_HWASAN if (android::base::running_with_hwasan()) GTEST_SKIP()
+
 class CapturedStdFd {
  public:
   CapturedStdFd(int std_fd);
@@ -44,12 +67,17 @@ class CapturedStdFd {
   DISALLOW_COPY_AND_ASSIGN(CapturedStdFd);
 };
 
-class CapturedStderr : public CapturedStdFd {
+}
+}
+
+// TODO: move these things into the correct namespace
+
+class CapturedStderr : public android::base::CapturedStdFd {
  public:
   CapturedStderr() : CapturedStdFd(STDERR_FILENO) {}
 };
 
-class CapturedStdout : public CapturedStdFd {
+class CapturedStdout : public android::base::CapturedStdFd {
  public:
   CapturedStdout() : CapturedStdFd(STDOUT_FILENO) {}
 };
@@ -88,10 +116,3 @@ class CapturedStdout : public CapturedStdFd {
       ADD_FAILURE() << "regex mismatch: expected to not find " << (__pattern) << " in:\n" << __s; \
     }                                                                                             \
   } while (0)
-
-extern "C" void __hwasan_init() __attribute__((weak));
-static inline bool running_with_hwasan() {
-  return &__hwasan_init != 0;
-}
-
-#define SKIP_WITH_HWASAN if (running_with_hwasan()) GTEST_SKIP()

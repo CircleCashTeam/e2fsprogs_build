@@ -21,7 +21,6 @@
 #include <inttypes.h>
 #include <poll.h>
 #include <stdarg.h>
-#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -280,7 +279,7 @@ static int logdOpen(struct logger_list* logger_list) {
   int ret, remaining, sock;
   bool set_timeout;
 
-  sock = atomic_load(&logger_list->fd);
+  sock = logger_list->fd.load();
   if (sock > 0) {
     return sock;
   }
@@ -361,7 +360,7 @@ static int logdOpen(struct logger_list* logger_list) {
     return ret;
   }
 
-  ret = atomic_exchange(&logger_list->fd, sock);
+  ret = logger_list->fd.exchange(sock);
   if ((ret > 0) && (ret != sock)) {
     close(ret);
   }
@@ -389,7 +388,7 @@ int LogdRead(struct logger_list* logger_list, struct log_msg* log_msg) {
 
 /* Close all the logs */
 void LogdClose(struct logger_list* logger_list) {
-  int sock = atomic_exchange(&logger_list->fd, -1);
+  int sock = logger_list->fd.exchange(-1);
   if (sock > 0) {
     close(sock);
   }

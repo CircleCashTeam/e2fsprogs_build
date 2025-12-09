@@ -1,19 +1,23 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef OPENSSL_HEADER_CONF_H
 #define OPENSSL_HEADER_CONF_H
 
-#include <openssl/base.h>
+#include <openssl/base.h>   // IWYU pragma: export
 
 #include <openssl/stack.h>
-#include <openssl/lhash.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -45,7 +49,6 @@ struct conf_value_st {
 };
 
 DEFINE_STACK_OF(CONF_VALUE)
-DECLARE_LHASH_OF(CONF_VALUE)
 
 
 // NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
@@ -92,6 +95,9 @@ OPENSSL_EXPORT const char *NCONF_get_string(const CONF *conf,
 OPENSSL_EXPORT int CONF_modules_load_file(const char *filename,
                                           const char *appname,
                                           unsigned long flags);
+
+// CONF_modules_unload does nothing.
+OPENSSL_EXPORT void CONF_modules_unload(int all);
 
 // CONF_modules_free does nothing.
 OPENSSL_EXPORT void CONF_modules_free(void);

@@ -1,16 +1,16 @@
-/* Copyright 2014 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2014 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/base.h>
 
@@ -86,7 +86,7 @@ bcm_infallible generate_key_from_seed_no_self_test(
     abort();
   }
 
-  return bcm_infallible::approved;
+  return bcm_infallible::not_approved;
 }
 
 // Note that this overreads by a byte. This is fine in the context that it's
@@ -294,6 +294,18 @@ bcm_infallible BCM_slhdsa_sha2_128s_generate_key_from_seed(
                                              seed);
 }
 
+bcm_status BCM_slhdsa_sha2_128s_generate_key_from_seed_fips(
+    uint8_t out_public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    uint8_t out_secret_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES],
+    const uint8_t seed[3 * BCM_SLHDSA_SHA2_128S_N]) {
+  if (out_public_key == nullptr || out_secret_key == nullptr) {
+    return bcm_status::failure;
+  }
+  BCM_slhdsa_sha2_128s_generate_key_from_seed(out_public_key, out_secret_key,
+                                              seed);
+  return bcm_status::approved;
+}
+
 bcm_infallible BCM_slhdsa_sha2_128s_generate_key(
     uint8_t out_public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
     uint8_t out_private_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES]) {
@@ -301,6 +313,16 @@ bcm_infallible BCM_slhdsa_sha2_128s_generate_key(
   RAND_bytes(seed, 3 * BCM_SLHDSA_SHA2_128S_N);
   return BCM_slhdsa_sha2_128s_generate_key_from_seed(out_public_key,
                                                      out_private_key, seed);
+}
+
+bcm_status BCM_slhdsa_sha2_128s_generate_key_fips(
+    uint8_t out_public_key[BCM_SLHDSA_SHA2_128S_PUBLIC_KEY_BYTES],
+    uint8_t out_private_key[BCM_SLHDSA_SHA2_128S_PRIVATE_KEY_BYTES]) {
+  if (out_public_key == nullptr || out_private_key == nullptr) {
+    return bcm_status::failure;
+  }
+  BCM_slhdsa_sha2_128s_generate_key(out_public_key, out_private_key);
+  return bcm_status::approved;
 }
 
 bcm_infallible BCM_slhdsa_sha2_128s_public_from_private(
@@ -346,7 +368,7 @@ static int slhdsa_get_context_and_oid(uint8_t *out_context_and_oid,
     case NID_sha256:
       oid = kSHA256OID;
       oid_len = sizeof(kSHA256OID);
-      static_assert(sizeof(kSHA256OID) <= MAX_OID_LENGTH, "");
+      static_assert(sizeof(kSHA256OID) <= MAX_OID_LENGTH);
       expected_hash_len = 32;
       break;
 
@@ -355,7 +377,7 @@ static int slhdsa_get_context_and_oid(uint8_t *out_context_and_oid,
     case NID_sha384:
       oid = kSHA384OID;
       oid_len = sizeof(kSHA384OID);
-      static_assert(sizeof(kSHA384OID) <= MAX_OID_LENGTH, "");
+      static_assert(sizeof(kSHA384OID) <= MAX_OID_LENGTH);
       expected_hash_len = 48;
       break;
 

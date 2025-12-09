@@ -1,6 +1,6 @@
 set(target_name "pcre2")
 
-set(target_cflags
+set(cflags
     "-DHAVE_CONFIG_H"
     "-Wall"
     "-DPCRE2_CODE_UNIT_WIDTH=8"
@@ -15,6 +15,7 @@ set(target_srcs
         "${target_dir}/src/pcre2_chartables.c"
         "${target_dir}/src/pcre2_chkdint.c"
         "${target_dir}/src/pcre2_compile.c"
+        "${target_dir}/src/pcre2_compile_class.c"
         "${target_dir}/src/pcre2_config.c"
         "${target_dir}/src/pcre2_context.c"
         "${target_dir}/src/pcre2_convert.c"
@@ -42,5 +43,5 @@ set(target_srcs
 )
 
 add_library(${target_name} STATIC ${target_srcs})
-target_compile_options(${target_name} PRIVATE ${target_cflags})
-target_include_directories(${target_name} PRIVATE ${libpcre2_headers})
+target_compile_options(${target_name} PRIVATE ${cflags})
+target_include_directories(${target_name} PUBLIC ${libpcre2_headers})

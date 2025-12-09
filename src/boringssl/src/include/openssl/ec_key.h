@@ -1,17 +1,22 @@
-/*
- * Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef OPENSSL_HEADER_EC_KEY_H
 #define OPENSSL_HEADER_EC_KEY_H
 
-#include <openssl/base.h>
+#include <openssl/base.h>   // IWYU pragma: export
 
 #include <openssl/ec.h>
 #include <openssl/engine.h>
@@ -125,12 +130,12 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
 // EC_KEY_oct2key decodes |len| bytes from |in| as an EC public key in X9.62
 // form. |key| must already have a group configured. On success, it sets the
 // public key in |key| to the result and returns one. Otherwise, it returns
-// zero.
+// zero. |ctx| may be NULL.
 OPENSSL_EXPORT int EC_KEY_oct2key(EC_KEY *key, const uint8_t *in, size_t len,
                                   BN_CTX *ctx);
 
 // EC_KEY_key2buf behaves like |EC_POINT_point2buf|, except it encodes the
-// public key in |key|.
+// public key in |key|. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT size_t EC_KEY_key2buf(const EC_KEY *key,
                                      point_conversion_form_t form,
                                      uint8_t **out_buf, BN_CTX *ctx);
@@ -260,11 +265,6 @@ struct ecdsa_method_st {
 
   int (*init)(EC_KEY *key);
   int (*finish)(EC_KEY *key);
-
-  // group_order_size returns the number of bytes needed to represent the order
-  // of the group. This is used to calculate the maximum size of an ECDSA
-  // signature in |ECDSA_size|.
-  size_t (*group_order_size)(const EC_KEY *key);
 
   // sign matches the arguments and behaviour of |ECDSA_sign|.
   int (*sign)(const uint8_t *digest, size_t digest_len, uint8_t *sig,

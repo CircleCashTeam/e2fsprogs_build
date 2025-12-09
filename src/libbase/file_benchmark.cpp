@@ -16,6 +16,7 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <benchmark/benchmark.h>
@@ -23,8 +24,8 @@
 #include "android-base/file.h"
 #include "android-base/logging.h"
 
-static void BenchmarkReadFdToString(benchmark::State& state) {
-  android::base::unique_fd fd(memfd_create("memfile", 0));
+static void BM_ReadFdToString(benchmark::State& state) {
+  android::base::unique_fd fd(syscall(__NR_memfd_create, "memfile", 0));
   CHECK(fd.get() > 0);
   CHECK_EQ(ftruncate(fd, state.range(0)), 0);
   for (auto _ : state) {
@@ -35,4 +36,4 @@ static void BenchmarkReadFdToString(benchmark::State& state) {
   state.SetBytesProcessed(state.iterations() * state.range(0));
 }
 
-BENCHMARK_RANGE(BenchmarkReadFdToString, 0, 1024 * 1024);
+BENCHMARK_RANGE(BM_ReadFdToString, 0, 1024 * 1024);

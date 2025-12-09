@@ -1,11 +1,16 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 // extension creation utilities
 
@@ -221,49 +226,41 @@ static int v3_check_generic(const char **value) {
 static X509_EXTENSION *v3_generic_extension(const char *ext, const char *value,
                                             int crit, int gen_type,
                                             const X509V3_CTX *ctx) {
-  unsigned char *ext_der = NULL;
-  size_t ext_len = 0;
-  ASN1_OBJECT *obj = NULL;
-  ASN1_OCTET_STRING *oct = NULL;
-  X509_EXTENSION *extension = NULL;
-  if (!(obj = OBJ_txt2obj(ext, 0))) {
+  bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj(ext, 0));
+  if (obj == nullptr) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXTENSION_NAME_ERROR);
     ERR_add_error_data(2, "name=", ext);
-    goto err;
+    return nullptr;
   }
 
+  bssl::UniquePtr<unsigned char> ext_der;
+  size_t ext_len = 0;
   if (gen_type == 1) {
-    ext_der = x509v3_hex_to_bytes(value, &ext_len);
+    ext_der.reset(x509v3_hex_to_bytes(value, &ext_len));
   } else if (gen_type == 2) {
-    ext_der = generic_asn1(value, ctx, &ext_len);
+    ext_der.reset(generic_asn1(value, ctx, &ext_len));
   }
 
-  if (ext_der == NULL) {
+  if (ext_der == nullptr) {
     OPENSSL_PUT_ERROR(X509V3, X509V3_R_EXTENSION_VALUE_ERROR);
     ERR_add_error_data(2, "value=", value);
-    goto err;
+    return nullptr;
   }
 
   if (ext_len > INT_MAX) {
     OPENSSL_PUT_ERROR(X509V3, ERR_R_OVERFLOW);
-    goto err;
+    return nullptr;
   }
 
-  oct = ASN1_OCTET_STRING_new();
-  if (oct == NULL) {
-    goto err;
+  bssl::UniquePtr<ASN1_OCTET_STRING> oct(ASN1_OCTET_STRING_new());
+  if (oct == nullptr) {
+    return nullptr;
   }
 
-  ASN1_STRING_set0(oct, ext_der, (int)ext_len);
-  ext_der = NULL;
+  ASN1_STRING_set0(oct.get(), ext_der.get(), (int)ext_len);
+  ext_der.release();  // ASN1_STRING_set0 took ownership.
 
-  extension = X509_EXTENSION_create_by_OBJ(NULL, obj, crit, oct);
-
-err:
-  ASN1_OBJECT_free(obj);
-  ASN1_OCTET_STRING_free(oct);
-  OPENSSL_free(ext_der);
-  return extension;
+  return X509_EXTENSION_create_by_OBJ(nullptr, obj.get(), crit, oct.get());
 }
 
 static unsigned char *generic_asn1(const char *value, const X509V3_CTX *ctx,

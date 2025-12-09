@@ -1,12 +1,17 @@
-/*
- * Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ec.h>
 
@@ -40,11 +45,10 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
     return 0;
   }
 
-  int ret = 0;
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  if (tmp == NULL) {
-    goto err;
+  if (tmp == nullptr) {
+    return 0;
   }
 
   if (!BN_MONT_CTX_set(&group->field, p, ctx) ||
@@ -52,21 +56,17 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
       !ec_bignum_to_felem(group, &group->b, b) ||
       // Reuse Z from the generator to cache the value one.
       !ec_bignum_to_felem(group, &group->generator.raw.Z, BN_value_one())) {
-    goto err;
+    return 0;
   }
 
   // group->a_is_minus3
   if (!BN_copy(tmp, a) ||
       !BN_add_word(tmp, 3)) {
-    goto err;
+    return 0;
   }
   group->a_is_minus3 = (0 == BN_cmp(tmp, &group->field.N));
 
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
+  return 1;
 }
 
 int ec_GFp_simple_group_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,

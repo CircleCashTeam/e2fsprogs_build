@@ -79,7 +79,7 @@ ZLIB_1.2.5.2 {
     inflateResetKeep;
 } ZLIB_1.2.5.1;
 
-ZLIB_1.2.7.1 { # introduced=19
+ZLIB_1.2.7.1 {
     inflateGetDictionary;
     gzvprintf;
 } ZLIB_1.2.5.2;
@@ -102,7 +102,7 @@ ZLIB_NDK {
     _dist_code;
     _length_code;
     _tr_align;
-    _tr_flush_bits; # introduced=21
+    _tr_flush_bits;
     _tr_flush_block;
     _tr_init;
     _tr_stored_block;

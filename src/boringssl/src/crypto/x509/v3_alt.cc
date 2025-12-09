@@ -1,22 +1,27 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/asn1.h>
 #include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
-#include "ext_dat.h"
 #include "internal.h"
 
 
@@ -38,15 +43,55 @@ static STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES_cb(
   return i2v_GENERAL_NAMES(method, reinterpret_cast<GENERAL_NAMES *>(ext), ret);
 }
 
-const X509V3_EXT_METHOD v3_alt[] = {
-    {NID_subject_alt_name, 0, ASN1_ITEM_ref(GENERAL_NAMES), 0, 0, 0, 0, 0, 0,
-     i2v_GENERAL_NAMES_cb, v2i_subject_alt, NULL, NULL, NULL},
+const X509V3_EXT_METHOD v3_subject_alt_name = {
+    NID_subject_alt_name,
+    0,
+    ASN1_ITEM_ref(GENERAL_NAMES),
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    i2v_GENERAL_NAMES_cb,
+    v2i_subject_alt,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
-    {NID_issuer_alt_name, 0, ASN1_ITEM_ref(GENERAL_NAMES), 0, 0, 0, 0, 0, 0,
-     i2v_GENERAL_NAMES_cb, v2i_issuer_alt, NULL, NULL, NULL},
+const X509V3_EXT_METHOD v3_issuer_alt_name = {
+    NID_issuer_alt_name,
+    0,
+    ASN1_ITEM_ref(GENERAL_NAMES),
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    i2v_GENERAL_NAMES_cb,
+    v2i_issuer_alt,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
-    {NID_certificate_issuer, 0, ASN1_ITEM_ref(GENERAL_NAMES), 0, 0, 0, 0, 0, 0,
-     i2v_GENERAL_NAMES_cb, NULL, NULL, NULL, NULL},
+const X509V3_EXT_METHOD v3_certificate_issuer = {
+    NID_certificate_issuer,
+    0,
+    ASN1_ITEM_ref(GENERAL_NAMES),
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    i2v_GENERAL_NAMES_cb,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
 };
 
 STACK_OF(CONF_VALUE) *i2v_GENERAL_NAMES(const X509V3_EXT_METHOD *method,

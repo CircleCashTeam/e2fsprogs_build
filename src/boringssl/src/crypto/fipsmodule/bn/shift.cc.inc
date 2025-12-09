@@ -1,11 +1,16 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/bn.h>
 
@@ -124,12 +129,11 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
 
 int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a, unsigned n,
                            BN_CTX *ctx) {
-  int ret = 0;
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
   unsigned max_bits;
   if (tmp == NULL || !BN_copy(r, a) || !bn_wexpand(tmp, r->width)) {
-    goto err;
+    return 0;
   }
 
   // Shift conditionally by powers of two.
@@ -142,11 +146,7 @@ int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a, unsigned n,
                     r->d /* ignore shift */, r->width);
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
+  return 1;
 }
 
 void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num) {

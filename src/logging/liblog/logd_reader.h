@@ -29,15 +29,3 @@ void LogdClose(struct logger_list* logger_list);
 ssize_t SendLogdControlMessage(char* buf, size_t buf_size);
 
 __END_DECLS
-
-#ifndef HAVE_STRLCPY
-size_t strlcpy(char *dst, const char *src, size_t size) {
-    size_t len = strlen(src);
-    if (size > 0) {
-        size_t n = (len < size - 1) ? len : size - 1;
-        memcpy(dst, src, n);
-        dst[n] = '\0';
-    }
-    return len;
-}
-#endif

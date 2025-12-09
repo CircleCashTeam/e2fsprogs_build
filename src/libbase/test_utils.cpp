@@ -27,6 +27,8 @@
 #include <android-base/file.h>
 #include <android-base/logging.h>
 
+namespace android::base {
+
 CapturedStdFd::CapturedStdFd(int std_fd) : std_fd_(std_fd), old_fd_(-1) {
   Start();
 }
@@ -72,4 +74,6 @@ void CapturedStdFd::Stop() {
   close(old_fd_);
   old_fd_ = -1;
   // Note: cannot restore prior setvbuf() setting.
+}
+
 }

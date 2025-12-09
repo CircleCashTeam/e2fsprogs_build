@@ -1,17 +1,24 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/asn1.h>
 
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <iterator>
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -124,7 +131,7 @@ static const ASN1_STRING_TABLE *asn1_string_table_get(int nid) {
   ASN1_STRING_TABLE key;
   key.nid = nid;
   const ASN1_STRING_TABLE *tbl = reinterpret_cast<ASN1_STRING_TABLE *>(
-      bsearch(&key, tbl_standard, OPENSSL_ARRAY_SIZE(tbl_standard),
+      bsearch(&key, tbl_standard, std::size(tbl_standard),
               sizeof(ASN1_STRING_TABLE), table_cmp_void));
   if (tbl != NULL) {
     return tbl;
@@ -197,5 +204,5 @@ void ASN1_STRING_TABLE_cleanup(void) {}
 void asn1_get_string_table_for_testing(const ASN1_STRING_TABLE **out_ptr,
                                        size_t *out_len) {
   *out_ptr = tbl_standard;
-  *out_len = OPENSSL_ARRAY_SIZE(tbl_standard);
+  *out_len = std::size(tbl_standard);
 }

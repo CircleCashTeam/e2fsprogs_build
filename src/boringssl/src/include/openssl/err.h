@@ -1,18 +1,23 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef OPENSSL_HEADER_ERR_H
 #define OPENSSL_HEADER_ERR_H
 
 #include <stdio.h>
 
-#include <openssl/base.h>
+#include <openssl/base.h>   // IWYU pragma: export
 
 #if defined(__cplusplus)
 extern "C" {
@@ -73,6 +78,13 @@ OPENSSL_INLINE int ERR_GET_LIB(uint32_t packed_error) {
 // |ERR_GET_LIB|). Note that reason codes are specific to the library.
 OPENSSL_INLINE int ERR_GET_REASON(uint32_t packed_error) {
   return (int)(packed_error & 0xfff);
+}
+
+// ERR_equals returns one if |packed_error|'s library and reason code are |lib|
+// and |reason|, respectively, and zero otherwise.
+OPENSSL_INLINE int ERR_equals(uint32_t packed_error, int lib, int reason) {
+  return ERR_GET_LIB(packed_error) == lib &&
+         ERR_GET_REASON(packed_error) == reason;
 }
 
 // ERR_get_error gets the packed error code for the least recent error and
@@ -248,6 +260,7 @@ enum {
   ERR_LIB_CIPHER,
   ERR_LIB_HKDF,
   ERR_LIB_TRUST_TOKEN,
+  ERR_LIB_CMS,
   ERR_LIB_USER,
   ERR_NUM_LIBS
 };

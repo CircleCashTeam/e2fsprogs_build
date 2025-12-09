@@ -486,7 +486,7 @@ LogMessage::LogMessage(const char* file, unsigned int line, LogSeverity severity
 
 LogMessage::~LogMessage() {
   // Check severity again. This is duplicate work wrt/ LOG macros, but not LOG_STREAM.
-  if (!WOULD_LOG(data_->GetSeverity())) {
+  if (!WOULD_LOG_WITH_TAG(data_->GetSeverity(), data_->GetTag())) {
     return;
   }
 

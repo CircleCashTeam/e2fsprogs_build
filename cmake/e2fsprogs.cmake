@@ -18,11 +18,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     list(APPEND e2fsprogs_cflags "-Wno-error=deprecated-declarations")
 endif()
 
-set(e2fsprogs_includes "")
+set(e2fsprogs_headers
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/blkid"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/e2p"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/et"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/ext2fs"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/ss"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/support"
+    "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib/uuid"
+CACHE STRING "" FORCE)
+
 if(WIN32)
     list(APPEND e2fsprogs_cflags "-Wno-error=unused-parameter" "-Wno-error=unused-variable")
-    list(APPEND e2fsprogs_includes "${CMAKE_SOURCE_DIR}/src/e2fsprogs/include/mingw")
+    list(APPEND e2fsprogs_headers "${CMAKE_SOURCE_DIR}/src/e2fsprogs/include/mingw")
     list(APPEND e2fsprogs_cflags "-DWINDOWS_IO_MANAGER_USE_MMAP_READ")
 endif()
-
-list(APPEND libext2_headers "${CMAKE_SOURCE_DIR}/src/e2fsprogs/lib")

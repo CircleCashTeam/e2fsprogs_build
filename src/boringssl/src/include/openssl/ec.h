@@ -1,17 +1,22 @@
-/*
- * Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2000-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #ifndef OPENSSL_HEADER_EC_H
 #define OPENSSL_HEADER_EC_H
 
-#include <openssl/base.h>
+#include <openssl/base.h>   // IWYU pragma: export
 
 #if defined(__cplusplus)
 extern "C" {
@@ -102,8 +107,8 @@ OPENSSL_EXPORT const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group);
 // EC_GROUP_order_bits returns the number of bits of the order of |group|.
 OPENSSL_EXPORT int EC_GROUP_order_bits(const EC_GROUP *group);
 
-// EC_GROUP_get_cofactor sets |*cofactor| to the cofactor of |group| using
-// |ctx|, if it's not NULL. It returns one on success and zero otherwise.
+// EC_GROUP_get_cofactor sets |*cofactor| to the cofactor of |group|. It returns
+// one on success and zero otherwise. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_GROUP_get_cofactor(const EC_GROUP *group,
                                          BIGNUM *cofactor, BN_CTX *ctx);
 
@@ -111,7 +116,7 @@ OPENSSL_EXPORT int EC_GROUP_get_cofactor(const EC_GROUP *group,
 // |*out_p| to the order of the coordinate field and |*out_a| and |*out_b| to
 // the parameters of the curve when expressed as y² = x³ + ax + b. Any of the
 // output parameters can be NULL. It returns one on success and zero on
-// error.
+// error. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_GROUP_get_curve_GFp(const EC_GROUP *group, BIGNUM *out_p,
                                           BIGNUM *out_a, BIGNUM *out_b,
                                           BN_CTX *ctx);
@@ -164,12 +169,12 @@ OPENSSL_EXPORT int EC_POINT_is_at_infinity(const EC_GROUP *group,
 
 // EC_POINT_is_on_curve returns one if |point| is an element of |group| and
 // and zero otherwise or when an error occurs. This is different from OpenSSL,
-// which returns -1 on error. If |ctx| is non-NULL, it may be used.
+// which returns -1 on error. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_POINT_is_on_curve(const EC_GROUP *group,
                                         const EC_POINT *point, BN_CTX *ctx);
 
 // EC_POINT_cmp returns zero if |a| is equal to |b|, greater than zero if
-// not equal and -1 on error. If |ctx| is not NULL, it may be used.
+// not equal and -1 on error. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a,
                                 const EC_POINT *b, BN_CTX *ctx);
 
@@ -177,8 +182,8 @@ OPENSSL_EXPORT int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a,
 // Point conversion.
 
 // EC_POINT_get_affine_coordinates_GFp sets |x| and |y| to the affine value of
-// |point| using |ctx|, if it's not NULL. It returns one on success and zero
-// otherwise.
+// |point|. It returns one on success and zero otherwise. |ctx| is ignored and
+// may be NULL.
 //
 // Either |x| or |y| may be NULL to skip computing that coordinate. This is
 // slightly faster in the common case where only the x-coordinate is needed.
@@ -195,9 +200,8 @@ OPENSSL_EXPORT int EC_POINT_get_affine_coordinates(const EC_GROUP *group,
                                                    BN_CTX *ctx);
 
 // EC_POINT_set_affine_coordinates_GFp sets the value of |point| to be
-// (|x|, |y|). The |ctx| argument may be used if not NULL. It returns one
-// on success or zero on error. It's considered an error if the point is not on
-// the curve.
+// (|x|, |y|). |ctx| is ignored and may be NULL. It returns one on success or
+// zero on error. It's considered an error if the point is not on the curve.
 //
 // Note that the corresponding function in OpenSSL versions prior to 1.0.2s does
 // not check if the point is on the curve. This is a security-critical check, so
@@ -221,7 +225,7 @@ OPENSSL_EXPORT int EC_POINT_set_affine_coordinates(const EC_GROUP *group,
 // EC_POINT_point2oct serialises |point| into the X9.62 form given by |form|
 // into, at most, |max_out| bytes at |buf|. It returns the number of bytes
 // written or zero on error if |buf| is non-NULL, else the number of bytes
-// needed. The |ctx| argument may be used if not NULL.
+// needed. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
                                          const EC_POINT *point,
                                          point_conversion_form_t form,
@@ -231,30 +235,31 @@ OPENSSL_EXPORT size_t EC_POINT_point2oct(const EC_GROUP *group,
 // EC_POINT_point2buf serialises |point| into the X9.62 form given by |form| to
 // a newly-allocated buffer and sets |*out_buf| to point to it. It returns the
 // length of the result on success or zero on error. The caller must release
-// |*out_buf| with |OPENSSL_free| when done.
+// |*out_buf| with |OPENSSL_free| when done. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT size_t EC_POINT_point2buf(const EC_GROUP *group,
                                          const EC_POINT *point,
                                          point_conversion_form_t form,
                                          uint8_t **out_buf, BN_CTX *ctx);
 
 // EC_POINT_point2cbb behaves like |EC_POINT_point2oct| but appends the
-// serialised point to |cbb|. It returns one on success and zero on error.
+// serialised point to |cbb|. It returns one on success and zero on error. |ctx|
+// is ignored and may be NULL.
 OPENSSL_EXPORT int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group,
                                       const EC_POINT *point,
                                       point_conversion_form_t form,
                                       BN_CTX *ctx);
 
 // EC_POINT_oct2point sets |point| from |len| bytes of X9.62 format
-// serialisation in |buf|. It returns one on success and zero on error. The
-// |ctx| argument may be used if not NULL. It's considered an error if |buf|
-// does not represent a point on the curve.
+// serialisation in |buf|. It returns one on success and zero on error. |ctx|
+// may be NULL. It's considered an error if |buf| does not represent a point on
+// the curve.
 OPENSSL_EXPORT int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
                                       const uint8_t *buf, size_t len,
                                       BN_CTX *ctx);
 
 // EC_POINT_set_compressed_coordinates_GFp sets |point| to equal the point with
 // the given |x| coordinate and the y coordinate specified by |y_bit| (see
-// X9.62). It returns one on success and zero otherwise.
+// X9.62). It returns one on success and zero otherwise. |ctx| may be NULL.
 OPENSSL_EXPORT int EC_POINT_set_compressed_coordinates_GFp(
     const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, int y_bit,
     BN_CTX *ctx);
@@ -263,23 +268,23 @@ OPENSSL_EXPORT int EC_POINT_set_compressed_coordinates_GFp(
 // Group operations.
 
 // EC_POINT_add sets |r| equal to |a| plus |b|. It returns one on success and
-// zero otherwise. If |ctx| is not NULL, it may be used.
+// zero otherwise. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_POINT_add(const EC_GROUP *group, EC_POINT *r,
                                 const EC_POINT *a, const EC_POINT *b,
                                 BN_CTX *ctx);
 
 // EC_POINT_dbl sets |r| equal to |a| plus |a|. It returns one on success and
-// zero otherwise. If |ctx| is not NULL, it may be used.
+// zero otherwise. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r,
                                 const EC_POINT *a, BN_CTX *ctx);
 
 // EC_POINT_invert sets |a| equal to minus |a|. It returns one on success and
-// zero otherwise. If |ctx| is not NULL, it may be used.
+// zero otherwise. |ctx| is ignored and may be NULL.
 OPENSSL_EXPORT int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a,
                                    BN_CTX *ctx);
 
 // EC_POINT_mul sets r = generator*n + q*m. It returns one on success and zero
-// otherwise. If |ctx| is not NULL, it may be used.
+// otherwise. |ctx| may be NULL.
 OPENSSL_EXPORT int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r,
                                 const BIGNUM *n, const EC_POINT *q,
                                 const BIGNUM *m, BN_CTX *ctx);
@@ -363,8 +368,8 @@ OPENSSL_EXPORT int EC_GROUP_set_generator(EC_GROUP *group,
                                           const BIGNUM *cofactor);
 
 // EC_GROUP_get_order sets |*order| to the order of |group|, if it's not
-// NULL. It returns one on success and zero otherwise. |ctx| is ignored. Use
-// |EC_GROUP_get0_order| instead.
+// NULL. It returns one on success and zero otherwise. |ctx| is ignored and may
+// be NULL. Use |EC_GROUP_get0_order| instead.
 OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
                                       BN_CTX *ctx);
 

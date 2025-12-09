@@ -1,11 +1,16 @@
-/*
- * Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1999-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <stdio.h>
 
@@ -15,7 +20,6 @@
 #include <openssl/obj.h>
 #include <openssl/x509.h>
 
-#include "ext_dat.h"
 #include "internal.h"
 
 
@@ -27,24 +31,6 @@ static STACK_OF(CONF_VALUE) *i2v_EXTENDED_KEY_USAGE(
 
 const X509V3_EXT_METHOD v3_ext_ku = {
     NID_ext_key_usage,
-    0,
-    ASN1_ITEM_ref(EXTENDED_KEY_USAGE),
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    i2v_EXTENDED_KEY_USAGE,
-    v2i_EXTENDED_KEY_USAGE,
-    0,
-    0,
-    NULL,
-};
-
-// NB OCSP acceptable responses also is a SEQUENCE OF OBJECT
-const X509V3_EXT_METHOD v3_ocsp_accresp = {
-    NID_id_pkix_OCSP_acceptableResponses,
     0,
     ASN1_ITEM_ref(EXTENDED_KEY_USAGE),
     0,

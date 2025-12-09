@@ -1,16 +1,16 @@
-/* Copyright 2014 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2014 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +30,7 @@
 #include <openssl/obj.h>
 #include <openssl/span.h>
 
-#include "../../ec_extra/internal.h"
+#include "../../ec/internal.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
@@ -471,12 +471,6 @@ TEST(ECTest, EmptyKey) {
   EXPECT_FALSE(EC_KEY_get0_group(key.get()));
   EXPECT_FALSE(EC_KEY_get0_public_key(key.get()));
   EXPECT_FALSE(EC_KEY_get0_private_key(key.get()));
-}
-
-static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
-  BIGNUM *bn = nullptr;
-  BN_hex2bn(&bn, hex);
-  return bssl::UniquePtr<BIGNUM>(bn);
 }
 
 // Test that point arithmetic works with custom curves using an arbitrary |a|,
@@ -1327,10 +1321,9 @@ TEST(ECTest, HashToCurve) {
     ASSERT_TRUE(EncodeECPoint(&buf, test.group, p.get(),
                               POINT_CONVERSION_UNCOMPRESSED));
     size_t field_len = (buf.size() - 1) / 2;
-    EXPECT_EQ(test.x_hex,
-              EncodeHex(bssl::MakeConstSpan(buf).subspan(1, field_len)));
-    EXPECT_EQ(test.y_hex, EncodeHex(bssl::MakeConstSpan(buf).subspan(
-                              1 + field_len, field_len)));
+    EXPECT_EQ(test.x_hex, EncodeHex(bssl::Span(buf).subspan(1, field_len)));
+    EXPECT_EQ(test.y_hex,
+              EncodeHex(bssl::Span(buf).subspan(1 + field_len, field_len)));
   }
 
   // hash-to-curve functions should check for the wrong group.
@@ -1405,7 +1398,7 @@ TEST(ECTest, HashToScalar) {
     uint8_t buf[EC_MAX_BYTES];
     size_t len;
     ec_scalar_to_bytes(test.group, buf, &len, &scalar);
-    EXPECT_EQ(test.result_hex, EncodeHex(bssl::MakeConstSpan(buf, len)));
+    EXPECT_EQ(test.result_hex, EncodeHex(bssl::Span(buf, len)));
   }
 
   // hash-to-scalar functions should check for the wrong group.

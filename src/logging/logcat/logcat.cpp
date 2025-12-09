@@ -60,6 +60,7 @@
 #include <processgroup/sched_policy.h>
 #include <system/thread_defs.h>
 #include "logcat.pb.h"
+#include "logcat_utils.h"
 #include "process_names.h"
 
 using com::android::logcat::proto::LogcatEntryProto;
@@ -953,8 +954,7 @@ int Logcat::Run(int argc, char** argv) {
     }
 
     if (forceFilters.size()) {
-        int err = android_log_addFilterString(logformat_.get(), forceFilters.c_str());
-        if (err < 0) {
+        if (!addFilterString(logformat_.get(), forceFilters)) {
             error(EXIT_FAILURE, 0, "Invalid filter expression '%s' in logcat args.",
                   forceFilters.c_str());
         }
@@ -963,9 +963,7 @@ int Logcat::Run(int argc, char** argv) {
         const char* env_tags_orig = getenv("ANDROID_LOG_TAGS");
 
         if (!!env_tags_orig) {
-            int err = android_log_addFilterString(logformat_.get(), env_tags_orig);
-
-            if (err < 0) {
+            if (!addFilterString(logformat_.get(), env_tags_orig)) {
                 error(EXIT_FAILURE, 0, "Invalid filter expression '%s' in ANDROID_LOG_TAGS.",
                       env_tags_orig);
             }
@@ -973,8 +971,7 @@ int Logcat::Run(int argc, char** argv) {
     } else {
         // Add from commandline
         for (int i = optind ; i < argc ; i++) {
-            int err = android_log_addFilterString(logformat_.get(), argv[i]);
-            if (err < 0) {
+            if (!addFilterString(logformat_.get(), argv[i])) {
                 error(EXIT_FAILURE, 0, "Invalid filter expression '%s'.", argv[i]);
             }
         }

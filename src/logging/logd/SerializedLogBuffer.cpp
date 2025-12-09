@@ -30,7 +30,7 @@
 static SerializedLogEntry* LogToLogBuffer(std::list<SerializedLogChunk>& log_buffer,
                                           size_t max_size, uint64_t sequence, log_time realtime,
                                           uid_t uid, pid_t pid, pid_t tid, const char* msg,
-                                          uint16_t len) {
+                                          uint16_t len) REQUIRES(logd_lock) {
     if (log_buffer.empty()) {
         log_buffer.push_back(SerializedLogChunk(max_size / SerializedLogBuffer::kChunkSizeDivisor));
     }

@@ -1,17 +1,24 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/rsa.h>
 
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
+
+#include <iterator>
 
 #include <openssl/bn.h>
 #include <openssl/digest.h>
@@ -21,7 +28,6 @@
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/nid.h>
-#include <openssl/thread.h>
 
 #include "../../internal.h"
 #include "../bcm_interface.h"
@@ -179,10 +185,8 @@ RSA *RSA_new_method(const ENGINE *engine) {
   CRYPTO_new_ex_data(&rsa->ex_data);
 
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
-    CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
-    CRYPTO_MUTEX_cleanup(&rsa->lock);
-    METHOD_unref(rsa->meth);
-    OPENSSL_free(rsa);
+    rsa->meth = nullptr;
+    RSA_free(rsa);
     return NULL;
   }
 
@@ -208,12 +212,12 @@ void RSA_free(RSA *rsa) {
     return;
   }
 
-  if (rsa->meth->finish) {
+  if (rsa->meth != nullptr && rsa->meth->finish != nullptr) {
     rsa->meth->finish(rsa);
   }
   METHOD_unref(rsa->meth);
 
-  CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
+  CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), &rsa->ex_data);
 
   BN_free(rsa->n);
   BN_free(rsa->e);
@@ -272,12 +276,6 @@ void RSA_get0_factors(const RSA *rsa, const BIGNUM **out_p,
   if (out_q != NULL) {
     *out_q = rsa->q;
   }
-}
-
-const RSA_PSS_PARAMS *RSA_get0_pss_params(const RSA *rsa) {
-  // We do not support the id-RSASSA-PSS key encoding. If we add support later,
-  // the |maskHash| field should be filled in for OpenSSL compatibility.
-  return NULL;
 }
 
 void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
@@ -374,14 +372,7 @@ int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                                    padding);
 }
 
-unsigned RSA_size(const RSA *rsa) {
-  size_t ret = rsa->meth->size ? rsa->meth->size(rsa) : rsa_default_size(rsa);
-  // RSA modulus sizes are bounded by |BIGNUM|, which must fit in |unsigned|.
-  //
-  // TODO(https://crbug.com/boringssl/516): Should we make this return |size_t|?
-  assert(ret < UINT_MAX);
-  return (unsigned)ret;
-}
+unsigned RSA_size(const RSA *rsa) { return BN_num_bytes(rsa->n); }
 
 int RSA_is_opaque(const RSA *rsa) {
   return rsa->meth && (rsa->meth->flags & RSA_FLAG_OPAQUE);
@@ -720,15 +711,15 @@ static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
   // Note |bn_mul_consttime| and |bn_div_consttime| do not scale linearly, but
   // checking |ainv| is in range bounds the running time, assuming |m|'s bounds
   // were checked by the caller.
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  int ret = tmp != NULL && bn_mul_consttime(tmp, a, ainv, ctx) &&
-            bn_div_consttime(NULL, tmp, tmp, m, m_min_bits, ctx);
-  if (ret) {
-    *out_ok = constant_time_declassify_int(BN_is_one(tmp));
+  if (tmp == nullptr ||  //
+      !bn_mul_consttime(tmp, a, ainv, ctx) ||
+      !bn_div_consttime(NULL, tmp, tmp, m, m_min_bits, ctx)) {
+    return 0;
   }
-  BN_CTX_end(ctx);
-  return ret;
+  *out_ok = constant_time_declassify_int(BN_is_one(tmp));
+  return 1;
 }
 
 int RSA_check_key(const RSA *key) {
@@ -737,11 +728,6 @@ int RSA_check_key(const RSA *key) {
   // |BN_MONT_CTX_set_locked| as a result of API issues. See
   // https://crbug.com/boringssl/316. As a result, we inconsistently check RSA
   // invariants. We should fix this and integrate that logic.
-
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    return 1;
-  }
 
   if (!rsa_check_public_key(key)) {
     return 0;
@@ -885,20 +871,14 @@ static const BN_ULONG kSmallFactorsLimbs[] = {TOBN(0xc4309333, 0x3ef4e3e1),
                                               0x000017b1};
 
 DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
-  out->d = (BN_ULONG *)kSmallFactorsLimbs;
-  out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
+  out->d = const_cast<BN_ULONG *>(kSmallFactorsLimbs);
+  out->width = std::size(kSmallFactorsLimbs);
   out->dmax = out->width;
   out->neg = 0;
   out->flags = BN_FLG_STATIC_DATA;
 }
 
 int RSA_check_fips(RSA *key) {
-  if (RSA_is_opaque(key)) {
-    // Opaque keys can't be checked.
-    OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
-    return 0;
-  }
-
   if (!RSA_check_key(key)) {
     return 0;
   }
@@ -919,8 +899,11 @@ int RSA_check_fips(RSA *key) {
   // match. This is only a plausibility test and we expect the value to be
   // composite, so too few iterations will cause us to reject the key, not use
   // an implausible one.
+  //
+  // |key->e| may be nullptr if created with |RSA_new_private_key_no_e|.
   enum bn_primality_result_t primality_result;
-  if (BN_num_bits(key->e) <= 16 ||  //
+  if (key->e == nullptr ||          //
+      BN_num_bits(key->e) <= 16 ||  //
       BN_num_bits(key->e) > 256 ||  //
       !BN_is_odd(key->n) ||         //
       !BN_is_odd(key->e) ||
@@ -991,5 +974,3 @@ int rsa_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 int RSA_flags(const RSA *rsa) { return rsa->flags; }
 
 int RSA_test_flags(const RSA *rsa, int flags) { return rsa->flags & flags; }
-
-int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) { return 1; }

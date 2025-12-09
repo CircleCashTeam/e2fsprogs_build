@@ -92,6 +92,11 @@ enum LogSeverity {
   FATAL,
 };
 
+// Map from LogSeverity to the corresponding character.
+static constexpr char kSeverityChars[] = "VDIWEFF";
+static_assert(arraysize(kSeverityChars) - 1 == android::base::FATAL + 1,
+              "Mismatch in size of kSeverityChars and values in LogSeverity");
+
 enum LogId {
   DEFAULT,
   MAIN,
@@ -205,8 +210,10 @@ struct LogAbortAfterFullExpr {
 #define ABORT_AFTER_LOG_FATAL_EXPR(x) ABORT_AFTER_LOG_EXPR_IF(true, x)
 
 // Defines whether the given severity will be logged or silently swallowed.
-#define WOULD_LOG(severity)                                                              \
-  (UNLIKELY(::android::base::ShouldLog(SEVERITY_LAMBDA(severity), _LOG_TAG_INTERNAL)) || \
+#define WOULD_LOG(severity) WOULD_LOG_WITH_TAG(severity, _LOG_TAG_INTERNAL)
+
+#define WOULD_LOG_WITH_TAG(severity, tag)                                  \
+  (UNLIKELY(::android::base::ShouldLog(SEVERITY_LAMBDA(severity), tag)) || \
    MUST_LOG_MESSAGE(severity))
 
 // Get an ostream that can be used for logging at the given severity and to the default

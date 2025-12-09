@@ -1,13 +1,18 @@
-/*
- * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
- * Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2005 Nokia. All rights reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+// Copyright 2005 Nokia. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <openssl/ssl.h>
 
@@ -29,7 +34,7 @@
 #include <openssl/md5.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
+#include <openssl/sha2.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -1241,33 +1246,32 @@ static bool check_credential(SSL_HANDSHAKE *hs, const SSL_CREDENTIAL *cred,
     return false;
   }
 
-  if (hs->config->check_client_certificate_type) {
-    // Check the certificate types advertised by the peer.
-    uint8_t cert_type;
-    switch (EVP_PKEY_id(cred->pubkey.get())) {
-      case EVP_PKEY_RSA:
-        cert_type = SSL3_CT_RSA_SIGN;
-        break;
-      case EVP_PKEY_EC:
-      case EVP_PKEY_ED25519:
-        cert_type = TLS_CT_ECDSA_SIGN;
-        break;
-      default:
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
-        return false;
-    }
-    if (std::find(hs->certificate_types.begin(), hs->certificate_types.end(),
-                  cert_type) == hs->certificate_types.end()) {
+  // Check the certificate types advertised by the peer.
+  uint8_t cert_type;
+  switch (EVP_PKEY_id(cred->pubkey.get())) {
+    case EVP_PKEY_RSA:
+      cert_type = SSL3_CT_RSA_SIGN;
+      break;
+    case EVP_PKEY_EC:
+    case EVP_PKEY_ED25519:
+      cert_type = TLS_CT_ECDSA_SIGN;
+      break;
+    default:
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
       return false;
-    }
+  }
+  if (std::find(hs->certificate_types.begin(), hs->certificate_types.end(),
+                cert_type) == hs->certificate_types.end()) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
+    return false;
   }
 
   // All currently supported credentials require a signature. Note this does not
   // check the ECDSA curve. Prior to TLS 1.3, there is no way to determine which
   // ECDSA curves are supported by the peer, so we must assume all curves are
   // supported.
-  return tls1_choose_signature_algorithm(hs, cred, out_sigalg);
+  return tls1_choose_signature_algorithm(hs, cred, out_sigalg) &&
+         ssl_credential_matches_requested_issuers(hs, cred);
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
@@ -1298,7 +1302,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   Array<SSL_CREDENTIAL *> creds;
-  if (!ssl_get_credential_list(hs, &creds)) {
+  if (!ssl_get_full_credential_list(hs, &creds)) {
     return ssl_hs_error;
   }
 

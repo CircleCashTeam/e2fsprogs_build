@@ -32,6 +32,11 @@ cflags_shared = [
     "-Wno-unused-parameter",
 ]
 
+cflags_lp64 = [
+    "-DDEFLATE_CHUNK_WRITE_64LE",
+    "-DINFLATE_CHUNK_READ_64LE",
+]
+
 cflags_arm = [
     // Even the NDK dropped non-neon support in r24.
     "-DADLER32_SIMD_NEON",
@@ -42,39 +47,23 @@ cflags_arm = [
     // TODO: DINFLATE_CHUNK_SIMD_NEON causes `atest org.apache.harmony.tests.java.util.zip.DeflaterTest` failures.
     // "-DINFLATE_CHUNK_SIMD_NEON",
 ]
-cflags_arm64 = cflags_arm + ["-DINFLATE_CHUNK_READ_64LE"]
+cflags_arm64 = cflags_arm + cflags_lp64
 
 cflags_riscv64 = [
     "-DRISCV_RVV",
     "-DADLER32_SIMD_RVV",
     "-DDEFLATE_SLIDE_HASH_RVV",
     "-DINFLATE_CHUNK_GENERIC",
-    "-DINFLATE_CHUNK_READ_64LE",
-]
+] + cflags_lp64
 
-// The *host* x86 configuration (with *lower* CPU feature requirements).
 cflags_x86 = [
-    // See ARMV8_OS_LINUX above.
-    "-DX86_NOT_WINDOWS",
-    // Android's host CPU feature requirements are *lower* than the
-    // corresponding device CPU feature requirements, so it's easier to just
-    // say "no SIMD for you" rather than specificially disable SSSE3.
-    // We should have a conversation about that, but not until we at least have
-    // data on how many Studio users have CPUs that don't make the grade...
-    // https://issuetracker.google.com/171235570
-    "-DCPU_NO_SIMD",
-]
-cflags_x86_64 = cflags_x86 + ["-DINFLATE_CHUNK_READ_64LE"]
-
-// The additional *device* x86/x86_64 configuration. Devices have *higher* CPU
-// feature requirements than the host.
-cflags_android_x86 = [
     // Android's x86 and x86-64 ABIs both include SSE2 and SSSE3.
-    "-UCPU_NO_SIMD",
+    // The host doesn't (as of 2025), but this is guarded by a CPUID check.
     "-DADLER32_SIMD_SSSE3",
     // TODO: DINFLATE_CHUNK_SIMD_SSE2 causes `atest org.apache.harmony.tests.java.util.zip.DeflaterTest` failures.
     // "-DINFLATE_CHUNK_SIMD_SSE2",
 ]
+cflags_x86_64 = cflags_x86 + cflags_lp64
 
 libz_srcs = [
     "adler32.c",
@@ -140,38 +129,53 @@ cc_defaults {
             cflags: cflags_x86_64,
         },
     },
+
     target: {
-        android_arm: {
+        //
+        // Tell zlib how to check for cpu features for all our supported combos.
+        //
+        linux_arm: {
             cflags: [
-                // Since we're building for the platform, we claim to be Linux rather than
-                // Android so we use getauxval() directly instead of the NDK
-                // android_getCpuFeatures which isn't available to us anyway.
                 "-DARMV8_OS_LINUX",
             ],
         },
-        android_x86: {
-            cflags: cflags_android_x86,
+        linux_arm64: {
+            cflags: [
+                "-DARMV8_OS_LINUX",
+            ],
         },
-        android_x86_64: {
-            cflags: cflags_android_x86,
+        // riscv64 doesn't need anything, because zlib only supports Linux.
+        linux_x86: {
+            cflags: [
+                "-DX86_NOT_WINDOWS",
+            ],
+        },
+        linux_x86_64: {
+            cflags: [
+                "-DX86_NOT_WINDOWS",
+            ],
         },
         darwin_arm64: {
             cflags: [
                 "-DARMV8_OS_MACOS",
             ],
         },
-        linux_bionic: {
-            enabled: true,
-        },
-        linux_arm64: {
+        darwin_x86_64: {
             cflags: [
-                // Since we're building for the platform, we claim to be Linux rather than
-                // Android so we use getauxval() directly instead of the NDK
-                // android_getCpuFeatures which isn't available to us anyway.
-                "-DARMV8_OS_LINUX",
+                "-DX86_NOT_WINDOWS",
             ],
         },
         windows: {
+            enabled: true,
+            cflags: [
+                "-DX86_WINDOWS",
+            ],
+        },
+
+        //
+        // zlib is needed by host bionic too.
+        //
+        linux_bionic: {
             enabled: true,
         },
     },
@@ -194,6 +198,14 @@ cc_library {
             "30",
         ],
         symbol_file: "libz.map.txt",
+    },
+
+    // Ignore the `internal_state` struct for ABI checks.
+    header_abi_checker: {
+        diff_flags: [
+            "-ignore-linker-set-key",
+            "_ZTI14internal_state",
+        ],
     },
 
     // linker/linker64 statically link zlib.
