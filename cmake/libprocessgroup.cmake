@@ -20,7 +20,7 @@ set(libprocessgroup_srcs
         "${libprocessgroup_dir}/task_profiles.cpp"
 )
 
-add_library(processgroup_util STATIC ${libprocessgroup_srcs})
+add_library(processgroup_util STATIC ${libprocessgroup_util_srcs})
 target_compile_options(processgroup_util PRIVATE ${cppflags})
 target_include_directories(processgroup_util PUBLIC
     ${libbase_headers}
@@ -32,7 +32,6 @@ target_include_directories(processgroup_util PUBLIC
 target_link_libraries(processgroup_util PUBLIC
     base
     cutils
-    
 )
 
 add_library(processgroup STATIC ${libprocessgroup_srcs})

@@ -66,6 +66,7 @@ include("${CMAKE_SOURCE_DIR}/cmake/libext2_support.cmake")
 # Libraries
 include("${CMAKE_SOURCE_DIR}/cmake/fmtlib.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/zlib.cmake")
+include("${CMAKE_SOURCE_DIR}/cmake/libjsoncpp.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/liblog.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libbase.cmake")
 include("${CMAKE_SOURCE_DIR}/cmake/libcutils.cmake")
