@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <memory>
@@ -496,57 +495,6 @@ TEST(liblog, __android_log_buf_write_and_print__newline_prefix) {
 
 TEST(liblog, __android_log_buf_write_and_print__newline_space_prefix) {
   buf_write_test("\n Hello World \n");
-}
-
-TEST(liblog, __android_log_logd_logger_with_timestamp) {
-#ifdef __ANDROID__
-  static std::string kTestTag("liblog");
-  static std::string kTestMessage("Test message");
-
-  struct timespec ts = {};
-  clock_gettime(CLOCK_REALTIME, &ts);
-  // Subtract some time to make sure that this can't pass by accident.
-  ASSERT_GE(ts.tv_sec, 360);
-  ts.tv_sec -= 360;
-
-  RunLogTests(
-      LOG_ID_MAIN,
-      [&ts]() {
-        __android_log_message msg = {.struct_size = sizeof(__android_log_message),
-                                     .buffer_id = LOG_ID_MAIN,
-                                     .priority = ANDROID_LOG_ERROR,
-                                     .tag = kTestTag.c_str(),
-                                     .message = kTestMessage.c_str()};
-        __android_log_logd_logger_with_timestamp(&msg, &ts);
-      },
-      [&ts](log_msg log_msg, bool* found) {
-        if (log_msg.entry.sec != static_cast<uint32_t>(ts.tv_sec)) {
-          return;
-        }
-        if (log_msg.entry.nsec != static_cast<uint32_t>(ts.tv_nsec)) {
-          return;
-        }
-        char* msg = log_msg.msg();
-        if (msg == nullptr) {
-          return;
-        }
-
-        if (msg[0] != ANDROID_LOG_ERROR) {
-          return;
-        }
-        ++msg;
-        if (std::string(&msg[0]) != kTestTag) {
-          return;
-        }
-        msg = &msg[kTestTag.length() + 1];
-        if (std::string(msg) != kTestMessage) {
-          return;
-        }
-        *found = true;
-      });
-#else
-  GTEST_LOG_(INFO) << "This test does nothing.\n";
-#endif
 }
 
 #ifdef ENABLE_FLAKY_TESTS

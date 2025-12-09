@@ -117,7 +117,7 @@ void LogdClose() {
   LogdSocket::NonBlockingSocket().Close();
 }
 
-int LogdWrite(log_id_t logId, const struct timespec* ts, const struct iovec* vec, size_t nr) {
+int LogdWrite(log_id_t logId, struct timespec* ts, struct iovec* vec, size_t nr) {
   ssize_t ret;
   static const unsigned headerLength = 1;
   struct iovec newVec[nr + headerLength];
