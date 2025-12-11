@@ -13,6 +13,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message("use Clang build")
     # use lld
     add_link_options("-fuse-ld=lld")
+    # enable colors compile
+    add_compile_options("-fcolor-diagnostics")
     if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
         # Android libs requried libc++ c++abi
         find_library(libcxx NAMES "libc++.a" "libc++.so")
